@@ -3,8 +3,6 @@ import { t } from "@/locales/i18n";
 import userStore from "@/store/userStore";
 import axios, { type AxiosRequestConfig, type AxiosError, type AxiosResponse } from "axios";
 import { toast } from "sonner";
-import type { Result } from "#/api";
-import { ResultStatus } from "#/enum";
 
 const axiosInstance = axios.create({
 	baseURL: GLOBAL_CONFIG.apiBaseUrl,
@@ -34,7 +32,7 @@ axiosInstance.interceptors.response.use(
 		// 	return data;
 		// }
 
-		return res;
+		//return res;
 	},
 	(error: AxiosError) => {
 		// const { response, message } = error || {};

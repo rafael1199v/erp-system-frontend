@@ -25,6 +25,11 @@ export const frontendNavData: NavProps["data"] = [
 				title: "sys.nav.stock",
 				path: "/stock",
 				icon: <Icon icon="local:bi-boxes" size="24" />
+			},
+			{
+				title: "Categorias",
+				path: "/categories",
+				icon: <Icon icon="local:bi-boxes" size="24" />
 			}
 		]
 	},

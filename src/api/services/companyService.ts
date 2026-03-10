@@ -1,7 +1,7 @@
 import apiClient from "../apiClient";
 
 import type { Company } from "#/company";
-import { ProductStock } from "@/types/productStock";
+import type { ProductStock } from "@/types/product";
 
 export enum CompanyApi {
   Company = "/company",

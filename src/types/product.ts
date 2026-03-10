@@ -1,4 +1,4 @@
-import { WarehouseWithStock } from "./warehouse";
+import type { WarehouseWithStock } from "./warehouse";
 
 export interface ProductCatalog {
     productId: number,
