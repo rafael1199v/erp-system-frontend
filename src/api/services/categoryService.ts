@@ -19,7 +19,15 @@ const createCategory = (category: CreateCategory) => {
   });
 }
 
+const updateCategory = (category: Category) => {
+  return apiClient.put<void>({
+    url: `${CategoryApi.Category}`,
+    data: category
+  });
+}
+
 export default {
   getCategories,
-  createCategory
+  createCategory,
+  updateCategory
 };

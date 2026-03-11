@@ -30,6 +30,11 @@ export const frontendNavData: NavProps["data"] = [
 				title: "Categorias",
 				path: "/categories",
 				icon: <Icon icon="local:bi-boxes" size="24" />
+			},
+			{
+				title: "Unidades",
+				path: "/units",
+				icon: <Icon icon="local:bi-boxes" size="24" />
 			}
 		]
 	},

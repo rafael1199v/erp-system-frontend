@@ -13,7 +13,8 @@ export function getFrontendDashboardRoutes(): RouteObject[] {
 		{ path: "movements/history", element: Component("/pages/movements/history") },
 		{ path: "movements/incoming/form", element: Component("/pages/movements/incoming/form") },
 		{ path: "movements/outgoing/form", element: Component("/pages/movements/outgoing/form") },
-		{ path: "categories", element: Component("/pages/category") }
+		{ path: "categories", element: Component("/pages/category") },
+		{ path: "units", element: Component("/pages/unit") },
 		// {
 		// 	path: "components",
 		// 	children: [

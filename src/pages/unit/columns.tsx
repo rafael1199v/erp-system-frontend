@@ -3,14 +3,14 @@
 import { Button } from "@/ui/button";
 import type { ColumnDef } from "@tanstack/react-table";
 
-export interface CategoryRow {
+export interface UnitRow {
   id: number;
   name: string;
 }
 
 export const getColumns = (
-  onEdit: (category: CategoryRow) => void
-): ColumnDef<CategoryRow>[] => [
+  onEdit: (unit: UnitRow) => void
+): ColumnDef<UnitRow>[] => [
   {
     accessorKey: "id",
     header: "Codigo",
@@ -23,10 +23,10 @@ export const getColumns = (
     id: "actions",
     header: "Acciones",
     cell: ({ row }) => {
-      const category = row.original;
+      const unit = row.original;
 
       return (
-        <Button variant="outline" className="cursor-pointer" onClick={() => onEdit(category)}>
+        <Button variant="outline" className="cursor-pointer" onClick={() => onEdit(unit)}>
           Editar
         </Button>
       );
