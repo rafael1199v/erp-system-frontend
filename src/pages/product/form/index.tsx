@@ -11,7 +11,7 @@ import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router";
 import { Combobox, type ComboboxOption } from "@/components/combobox";
 import { ProductStatus } from "@/types/enum";
-import type { CreateProduct } from "@/types/product";
+import type { CreateProduct, UpdateProduct } from "@/types/product";
 import categoryService from "@/api/services/categoryService";
 import unitService from "@/api/services/unitService";
 import supplierService from "@/api/services/supplierService";
@@ -45,6 +45,7 @@ export default function ProductFormPage() {
 		control,
 		handleSubmit,
 		register,
+		reset,
 		formState: { errors },
 	} = useForm<z.infer<typeof productSchema>>({
 		resolver: zodResolver(productSchema),
@@ -63,13 +64,24 @@ export default function ProductFormPage() {
 	useEffect(() => {
 		const fetchProduct = async () => {
 			const response = await productService.getProductWithCompany(Number(id));
+			const productWithCompany = response.data;
 			console.log(response.data);
+			reset({
+				name: productWithCompany.name,
+				imageUrl: productWithCompany.imageUrl ?? "",
+				categoryId: productWithCompany.categoryId.toString(),
+				unitId: productWithCompany.unitId.toString(),
+				supplierId: productWithCompany.supplierId.toString(),
+				sellPrice: productWithCompany.sellPrice.toString(),
+				currentCost: productWithCompany.currentCost.toString(),
+				reorderLevel: productWithCompany.reorderLevel.toString()
+			});
 		}
 
 		if(isEditing) {
 			fetchProduct();	
 		}
-	}, [id, isEditing]);
+	}, [id, isEditing, reset]);
 
 	useEffect(() => {
 		const fetchData = async () => {
@@ -123,9 +135,30 @@ export default function ProductFormPage() {
 			reorderLevel: Number.parseInt(values.reorderLevel),
 		};
 
+		const updateProduct: UpdateProduct = {
+			productId: Number(id),
+			name: values.name,
+			imageUrl: values.imageUrl || null,
+			categoryId: Number.parseInt(values.categoryId),
+			unitId: Number.parseInt(values.unitId),
+			supplierId: Number.parseInt(values.supplierId),
+			companyId: Number.parseInt(companyId),
+			productStatusId: ProductStatus.AVAILABLE,
+			sellPrice: Number.parseInt(values.sellPrice),
+			currentCost: Number.parseInt(values.currentCost),
+			reorderLevel: Number.parseInt(values.reorderLevel),
+		}
+
 		try {
-			await productService.createProduct(product);
-			toast.success("Producto creado con éxito");
+			if(isEditing) {
+				await productService.updateProduct(updateProduct);
+				toast.success("Producto actualizado con éxito");
+			}
+			else {
+				await productService.createProduct(product);
+				toast.success("Producto creado con éxito");
+			}			
+			
 			nav("/products");
 		} catch (error) {
 			console.error("Error creating product", error);
