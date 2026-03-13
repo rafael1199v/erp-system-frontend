@@ -8,7 +8,7 @@ import { toast } from "sonner";
 import { Title } from "@/ui/typography";
 import { useSelectedCompanyId } from "@/store/companyStore";
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router";
+import { useNavigate, useParams } from "react-router";
 import { Combobox, type ComboboxOption } from "@/components/combobox";
 import { ProductStatus } from "@/types/enum";
 import type { CreateProduct } from "@/types/product";
@@ -34,6 +34,9 @@ export default function ProductFormPage() {
 	const companyId = useSelectedCompanyId() || "-1";
 	const nav = useNavigate();
 
+	const { id } = useParams();
+	const isEditing = !!id;
+
 	const [categoryOptions, setCategoryOptions] = useState<ComboboxOption[]>([]);
 	const [unitOptions, setUnitOptions] = useState<ComboboxOption[]>([]);
 	const [supplierOptions, setSupplierOptions] = useState<ComboboxOption[]>([]);
@@ -56,6 +59,17 @@ export default function ProductFormPage() {
 			reorderLevel: "",
 		},
 	});
+
+	useEffect(() => {
+		const fetchProduct = async () => {
+			const response = await productService.getProductWithCompany(Number(id));
+			console.log(response.data);
+		}
+
+		if(isEditing) {
+			fetchProduct();	
+		}
+	}, [id, isEditing]);
 
 	useEffect(() => {
 		const fetchData = async () => {

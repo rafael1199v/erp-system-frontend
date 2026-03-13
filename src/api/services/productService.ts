@@ -1,6 +1,6 @@
 import apiClient from "../apiClient";
 
-import type { CreateProduct, ProductCatalog, ProductWithWarehouses } from "@/types/product";
+import type { CreateProduct, Product, ProductCatalog, ProductWithWarehouses } from "@/types/product";
 
 export enum ProductApi {
   Company = "/company",
@@ -26,8 +26,15 @@ const createProduct = (product: CreateProduct) => {
     });
 }
 
+const getProductWithCompany = (productId: number) => {
+    return apiClient.get<Product>({
+        url: `${ProductApi.Product}/with-company/${productId}`
+    });
+}
+
 export default {
     getProductCatalog,
     getProductsWithWarehouses,
-    createProduct
+    createProduct,
+    getProductWithCompany
 }

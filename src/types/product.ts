@@ -38,3 +38,32 @@ export interface CreateProduct {
     sellPrice: number;
 }
 
+
+export interface UpdateProduct {
+    productId: number,
+    name: string,
+    imageUrl: string | null,
+    unitId: number,
+    companyId: number,
+    productStatusId: number,
+    supplierId: number,
+    categoryId: number,
+    currentCost: number,
+    reorderLevel: number,
+    sellPrice: number
+}
+
+
+export interface Product {
+    id: number,
+    name: string;
+    imageUrl: string | null;
+    unitId: number;
+    companyId: number;
+    productStatusId: number;
+    supplierId: number;
+    categoryId: number;
+    currentCost: number;
+    reorderLevel: number;
+    sellPrice: number;
+}

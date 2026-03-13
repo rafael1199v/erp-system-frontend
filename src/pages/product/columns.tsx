@@ -67,5 +67,24 @@ export const columns: ColumnDef<ProductCatalog>[] = [
                 </Button>
             );
         }
+    },
+    {
+        id: "edit-action",
+        cell: ({ row }) => {
+            const product: ProductCatalog = row.original;
+            const navigate = useNavigate();
+
+            return (
+                <Button 
+                    variant="outline" 
+                    className="cursor-pointer"
+                    onClick={() => {
+                        navigate(`/products/form/${product.productId}`)
+                    }}
+                >
+                    Editar
+                </Button>
+            );
+        }
     }
 ]
