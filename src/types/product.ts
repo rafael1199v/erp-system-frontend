@@ -8,7 +8,8 @@ export interface ProductCatalog {
     imageUrl: string | null,
     categoryId: number,
     categoryName: string,
-    statusCode: number
+    statusCode: number,
+    isActive: boolean
 }
 
 export interface ProductStock {

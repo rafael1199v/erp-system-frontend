@@ -38,7 +38,7 @@ export default function TransactionDetailsPage () {
     return (
          <div className="flex flex-col w-full h-full gap-4">
             <Title as="h1">
-                Product: {productName}
+                Producto: {productName ?? "Sin datos"}
             </Title>
 
             <div className="h-full w-11/12">

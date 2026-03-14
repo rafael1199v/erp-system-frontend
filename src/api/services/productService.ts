@@ -39,10 +39,32 @@ const updateProduct = (product: UpdateProduct) => {
     })
 }
 
+const activateProduct = (productId: number, companyId: number) => {
+    return apiClient.post<void>({
+        url: `${ProductApi.Product}/activate`,
+        data: {
+            productId: productId,
+            companyId: companyId
+        }
+    })
+}
+
+const deactivateProduct = (productId: number, companyId: number) => {
+    return apiClient.post<void>({
+        url: `${ProductApi.Product}/deactivate`,
+        data: {
+            productId: productId,
+            companyId: companyId
+        }
+    })
+}
+
 export default {
     getProductCatalog,
     getProductsWithWarehouses,
     createProduct,
     getProductWithCompany,
-    updateProduct
+    updateProduct,
+    activateProduct,
+    deactivateProduct
 }

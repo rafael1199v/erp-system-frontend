@@ -1,13 +1,29 @@
 "use client"
 
-import { ProductCatalog } from "@/types/product";
 import { ColumnDef } from "@tanstack/react-table";
 import { ProductStatus } from "@/types/enum";
 import { Button } from "@/ui/button";
 import { useNavigate } from "react-router";
+import productService from "@/api/services/productService";
 
 
-export const columns: ColumnDef<ProductCatalog>[] = [
+interface ProductCatalogRow {
+    productId: number,
+    productName: string,
+    unit: number,
+    currentCost: number,
+    imageUrl: string | null,
+    categoryId: number,
+    categoryName: string,
+    statusCode: number,
+    isActive: boolean,
+    companyId: number
+}
+
+export const columns = (
+    navigate: ReturnType<typeof useNavigate>,
+    onRefresh: () => Promise<void>
+): ColumnDef<ProductCatalogRow>[] => [
     {
         accessorKey: "productId",
         header: "Codigo"
@@ -30,9 +46,13 @@ export const columns: ColumnDef<ProductCatalog>[] = [
 
         cell: ({ row }) => {
             const status = parseInt(row.getValue("statusCode"));
+            const isActive = Boolean(row.original.isActive);
             let formattedStatus = "Default";
 
-            if(status === ProductStatus.AVAILABLE) 
+            if(!isActive) {
+                formattedStatus = "Desactivado";
+            } 
+            else if(status === ProductStatus.AVAILABLE) 
                 formattedStatus = "Disponible";
             else 
                 formattedStatus = "No disponible";
@@ -52,17 +72,9 @@ export const columns: ColumnDef<ProductCatalog>[] = [
     {
         id: "actions",
         cell: ({ row }) => {
-            const product: ProductCatalog = row.original;
-            const navigate = useNavigate();
-
+            const product = row.original;
             return (
-                <Button 
-                    variant="outline" 
-                    className="cursor-pointer"
-                    onClick={() => {
-                        navigate(`/transaction-details/${product.productId}`)
-                    }}
-                >
+                <Button variant="outline" onClick={() => navigate(`/transaction-details/${product.productId}`)} className="cursor-pointer">
                     Ver historial
                 </Button>
             );
@@ -71,7 +83,7 @@ export const columns: ColumnDef<ProductCatalog>[] = [
     {
         id: "edit-action",
         cell: ({ row }) => {
-            const product: ProductCatalog = row.original;
+            const product: ProductCatalogRow = row.original;
             const navigate = useNavigate();
 
             return (
@@ -83,6 +95,31 @@ export const columns: ColumnDef<ProductCatalog>[] = [
                     }}
                 >
                     Editar
+                </Button>
+            );
+        }
+    },
+    {
+        id: "toggle-product",
+        cell: ({ row }) => {
+            const product = row.original;
+
+            const handleToggle = async () => {
+                try {
+                    if (product.isActive) {
+                        await productService.deactivateProduct(product.productId, product.companyId);
+                    } else {
+                        await productService.activateProduct(product.productId, product.companyId);
+                    }
+                    await onRefresh();
+                } catch (error) {
+                    console.error("Failed to toggle product status", error);
+                }
+            };
+
+            return (
+                <Button variant="outline" onClick={handleToggle} className="w-full cursor-pointer"> 
+                    {product.isActive ? "Desactivar" : "Activar"}
                 </Button>
             );
         }
