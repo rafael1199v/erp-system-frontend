@@ -27,8 +27,8 @@ const productSchema = z.object({
 	sellPrice: z.string().refine((val) => !Number.isNaN(val) && Number(val) > 0, {
 		message: "El precio de venta debe ser mayor a 0",
 	}),
-	currentCost: z.string().refine((val) => !Number.isNaN(val) && Number(val) >= 0, {
-		message: "El costo debe ser un número válido",
+	currentCost: z.string().refine((val) => !Number.isNaN(val) && Number(val) > 0, {
+		message: "El costo del producto debe ser mayor a cero",
 	}),
 	reorderLevel: z.string().min(1, "El nivel de reorden es requerido"),
 	productStatusId: z.string().min(1, "El estado del producto es requerido"),
