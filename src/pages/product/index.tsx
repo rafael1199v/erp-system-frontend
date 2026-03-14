@@ -40,7 +40,7 @@ export default function ProductPage() {
 
 			<Button
 				variant="default"
-				className="cursor-pointer"
+				className="cursor-pointer w-11/12"
 				onClick={() => {
 					nav("/products/form");
 				}}
