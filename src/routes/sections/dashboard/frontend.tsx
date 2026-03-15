@@ -1,6 +1,8 @@
 import type { RouteObject } from "react-router";
+import { Navigate } from "react-router";
 import { Component } from "./utils";
 
+import OrderPage from "@/feature/sales/pages/order";
 import TaxPage from "@/feature/sales/pages/tax";
 
 export function getFrontendDashboardRoutes(): RouteObject[] {
@@ -22,6 +24,8 @@ export function getFrontendDashboardRoutes(): RouteObject[] {
 
 		{ path: "sales",
 			children: [
+				{ index: true, element: <Navigate to="orders" replace /> },
+				{ path: "orders", element: <OrderPage /> },
 				{ path: "tax", element: <TaxPage /> }
 			]
 		},
