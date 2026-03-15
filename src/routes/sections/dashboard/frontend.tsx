@@ -1,6 +1,8 @@
 import type { RouteObject } from "react-router";
 import { Component } from "./utils";
 
+import TaxPage from "@/feature/sales/pages/tax";
+
 export function getFrontendDashboardRoutes(): RouteObject[] {
 	const frontendDashboardRoutes: RouteObject[] = [
 		//{ path: "workbench", element: Component("/pages/dashboard/workbench") },
@@ -8,8 +10,8 @@ export function getFrontendDashboardRoutes(): RouteObject[] {
 		{ path: "products", element: Component("/pages/product") },
 		{ path: "products/form", element: Component("/pages/product/form") },
 		{ path: "products/form/:id", element: Component("/pages/product/form") },
-		{ path: "stock", element: Component("/pages/stock")},
-		{ path: "transaction-details/:productId", element: Component("/pages/transaction-details")},
+		{ path: "stock", element: Component("/pages/stock") },
+		{ path: "transaction-details/:productId", element: Component("/pages/transaction-details") },
 		{ path: "movements/incoming", element: Component("/pages/movements/incoming") },
 		{ path: "movements/outgoing", element: Component("/pages/movements/outgoing") },
 		{ path: "movements/history", element: Component("/pages/movements/history") },
@@ -17,6 +19,12 @@ export function getFrontendDashboardRoutes(): RouteObject[] {
 		{ path: "movements/outgoing/form", element: Component("/pages/movements/outgoing/form") },
 		{ path: "categories", element: Component("/pages/category") },
 		{ path: "units", element: Component("/pages/unit") },
+
+		{ path: "sales",
+			children: [
+				{ path: "tax", element: <TaxPage /> }
+			]
+		},
 		// {
 		// 	path: "components",
 		// 	children: [
