@@ -1,5 +1,5 @@
 import apiClient from "@/api/apiClient";
-import type { CreateOrderRequest, CreateOrderResponse } from "../types/order";
+import type { RestaurantOrder, CreateOrderRequest, CreateOrderResponse } from "../types/order";
 
 export enum SalesOrderApi {
 	Order = "/sales/order",
@@ -12,6 +12,13 @@ const createOrder = (payload: CreateOrderRequest) => {
 	});
 };
 
+const getDailyOrders = (companyId: number) => {
+	return apiClient.get<RestaurantOrder[]>({
+		url: `${SalesOrderApi.Order}/${companyId}`
+	})
+}
+
 export default {
 	createOrder,
+	getDailyOrders
 };

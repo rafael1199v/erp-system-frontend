@@ -6,6 +6,7 @@ import { Text } from "@/ui/typography";
 import { format } from "date-fns";
 import { Clock3, Ticket, UserRound } from "lucide-react";
 import type { Waiter, RestaurantOrder } from "../types/order";
+import { OrderStatus } from "../enums/order";
 
 type PosTicketCardProps = {
 	restaurantOrder: RestaurantOrder;
@@ -35,7 +36,7 @@ export default function PosTicketCard({
 						</CardTitle>
 						<CardDescription>Cuenta abierta lista para registrar pedidos antes de cobrar.</CardDescription>
 					</div>
-					<Badge variant="success">Abierta</Badge>
+					<Badge variant="success">{restaurantOrder.orderStatusId === OrderStatus.Open ? "Abierto" : "Cerrado"}</Badge>
 				</div>
 			</CardHeader>
 
@@ -80,7 +81,7 @@ export default function PosTicketCard({
 			</CardContent>
 
 			<CardFooter className="justify-end">
-				<Button variant="outline" onClick={() => onContinueToCheckout(restaurantOrder)}>
+				<Button variant="outline" disabled={restaurantOrder.orderStatusId !== OrderStatus.Open} onClick={() => onContinueToCheckout(restaurantOrder)}>
 					Continuar a cobro
 				</Button>
 			</CardFooter>

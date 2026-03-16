@@ -16,10 +16,12 @@ export default function OrderPage() {
 	const companyId = Number.parseInt(selectedCompanyId ?? "", 10);
 	const hasValidCompany = Number.isInteger(companyId) && companyId > 0;
 
-	const { orders, createRestaurantOrder, isCreatingRestaurantOrder, assignWaiter } = useRestaurantOrders(hasValidCompany ? companyId : null);
+	const { orders, createRestaurantOrder, isCreatingRestaurantOrder, assignWaiter } = useRestaurantOrders(
+		hasValidCompany ? companyId : null,
+	);
 	const waitersQuery = useWaiters(hasValidCompany ? companyId : null);
 
-	const handleCreateOrder= async () => {
+	const handleCreateOrder = async () => {
 		if (!hasValidCompany) {
 			toast.error("Selecciona una compania antes de crear una cuenta.");
 			return;
@@ -37,9 +39,7 @@ export default function OrderPage() {
 		assignWaiter(companyId, orderId, waiterId);
 		const assignedWaiter = waitersQuery.data?.find((waiter) => waiter.id === waiterId);
 		toast.success(
-			assignedWaiter
-				? `Mesero ${assignedWaiter.name} asignado correctamente.`
-				: "Asignacion de mesero actualizada.",
+			assignedWaiter ? `Mesero ${assignedWaiter.name} asignado correctamente.` : "Asignacion de mesero actualizada.",
 		);
 	};
 
@@ -67,11 +67,16 @@ export default function OrderPage() {
 					</div>
 					<Title as="h1">Cuentas del punto de venta</Title>
 					<p className="max-w-2xl text-sm text-muted-foreground">
-						Crea cuentas abiertas, mantenlas disponibles en la sesion y asigna meseros antes de enviar el ticket a cobro.
+						Crea cuentas abiertas, mantenlas disponibles en la sesion y asigna meseros antes de enviar el ticket a
+						cobro.
 					</p>
 				</div>
 
-				<Button onClick={() => void handleCreateOrder()} disabled={!hasValidCompany || isCreatingRestaurantOrder} className="min-w-40">
+				<Button
+					onClick={() => void handleCreateOrder()}
+					disabled={!hasValidCompany || isCreatingRestaurantOrder}
+					className="min-w-40"
+				>
 					<Plus className="size-4" />
 					{isCreatingRestaurantOrder ? "Creando..." : "Nueva Cuenta"}
 				</Button>
@@ -81,7 +86,9 @@ export default function OrderPage() {
 				<Alert>
 					<CircleAlert className="size-4" />
 					<AlertTitle>Compania requerida</AlertTitle>
-					<AlertDescription>Selecciona una compania para crear tickets y consultar el listado de meseros.</AlertDescription>
+					<AlertDescription>
+						Selecciona una compania para crear tickets y consultar el listado de meseros.
+					</AlertDescription>
 				</Alert>
 			) : null}
 
@@ -118,7 +125,7 @@ export default function OrderPage() {
 				<CardHeader className="gap-2">
 					<CardTitle>Lista de cuentas abiertas</CardTitle>
 					<CardDescription>
-						Cada ticket conserva su informacion en almacenamiento local para que siga visible al volver a esta pantalla.
+						Esta es tu lista de tickets abiertos, por lo que asegurate de tener un mesero disponible para ir continuar con el cobro.
 					</CardDescription>
 				</CardHeader>
 
@@ -126,7 +133,9 @@ export default function OrderPage() {
 					{hasValidCompany && orders.length === 0 ? (
 						<div className="rounded-xl border border-dashed bg-muted/20 px-6 py-12 text-center">
 							<p className="text-sm font-medium text-text-primary">Aun no hay cuentas abiertas para esta compania.</p>
-							<p className="mt-2 text-sm text-muted-foreground">Usa Nueva Cuenta para abrir el primer ticket del POS.</p>
+							<p className="mt-2 text-sm text-muted-foreground">
+								Usa Nueva Cuenta para abrir el primer ticket del POS.
+							</p>
 						</div>
 					) : (
 						<div className="grid gap-4 xl:grid-cols-2">

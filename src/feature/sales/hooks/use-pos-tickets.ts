@@ -1,4 +1,4 @@
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import orderApi from "../api/orderApi";
 import type { RestaurantOrder } from "../types/order";
 
@@ -6,10 +6,13 @@ import type { RestaurantOrder } from "../types/order";
 export const useRestaurantOrders = (companyId: number | null) => {
 	const normalizedCompanyId = companyId ?? -1;
 	const queryKey = ["sales-orders", normalizedCompanyId] as const;
+	const queryClient = useQueryClient();
 
 	const ordersQuery = useQuery({
 		queryKey,
-		queryFn: () => [],
+		queryFn: async () => {
+			return (await orderApi.getDailyOrders(companyId ?? -1)).data;
+		},
 		enabled: normalizedCompanyId > 0
 	});
 
@@ -19,6 +22,7 @@ export const useRestaurantOrders = (companyId: number | null) => {
 		},
 		onSuccess: () => {
 			//TODO: Invalidar querys al momento de obtener los tickers
+			queryClient.invalidateQueries({ queryKey: ["sales-orders"] })
             console.log("Ticket creado con exito");
 		},
 	});
