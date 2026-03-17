@@ -18,6 +18,11 @@ export type RestaurantOrder = {
 	waiterId?: number | null;
 };
 
+export type AssignWaiter = {
+	restaurantOrderId: number,
+	waiterId: number
+}
+
 export type Waiter = {
 	id: number;
 	name: string;

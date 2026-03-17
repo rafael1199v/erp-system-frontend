@@ -63,7 +63,7 @@ export default function PosTicketCard({
 					<Text variant="subTitle2">Seleccionar mesero</Text>
 					<Select
 						value={restaurantOrder.waiterId ? String(restaurantOrder.waiterId) : undefined}
-						onValueChange={(value) => onAssignWaiter(restaurantOrder.id, Number(value))}
+						onValueChange={(value) => onAssignWaiter(restaurantOrder.restaurantOrderId, Number(value))}
 						disabled={isLoadingWaiters || waiters.length === 0}
 					>
 						<SelectTrigger className="w-full">

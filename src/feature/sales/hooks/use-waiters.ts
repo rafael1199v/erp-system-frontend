@@ -6,8 +6,9 @@ export const useWaiters = (companyId: number | null) => {
 
 	return useQuery({
 		queryKey: ["sales-waiters", normalizedCompanyId],
-		queryFn: () => waiterApi.getWaiters(normalizedCompanyId),
-		enabled: normalizedCompanyId > 0,
-		staleTime: Number.POSITIVE_INFINITY,
+		queryFn: async () => {
+			return (await waiterApi.getWaiters(normalizedCompanyId)).data;
+		},
+		enabled: normalizedCompanyId > 0
 	});
 };

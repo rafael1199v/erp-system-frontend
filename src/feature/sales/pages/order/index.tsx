@@ -31,12 +31,12 @@ export default function OrderPage() {
 		toast.success("Cuenta creada correctamente.");
 	};
 
-	const handleAssignWaiter = (orderId: number, waiterId: number | null) => {
+	const handleAssignWaiter = async (restaurantOrderId: number, waiterId: number | null) => {
 		if (!hasValidCompany) {
 			return;
 		}
 
-		assignWaiter(companyId, orderId, waiterId);
+		await assignWaiter(companyId, waiterId, restaurantOrderId);
 		const assignedWaiter = waitersQuery.data?.find((waiter) => waiter.id === waiterId);
 		toast.success(
 			assignedWaiter ? `Mesero ${assignedWaiter.name} asignado correctamente.` : "Asignacion de mesero actualizada.",

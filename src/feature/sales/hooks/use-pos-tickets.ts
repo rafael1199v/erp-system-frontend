@@ -2,7 +2,6 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import orderApi from "../api/orderApi";
 import type { RestaurantOrder } from "../types/order";
 
-
 export const useRestaurantOrders = (companyId: number | null) => {
 	const normalizedCompanyId = companyId ?? -1;
 	const queryKey = ["sales-orders", normalizedCompanyId] as const;
@@ -13,7 +12,7 @@ export const useRestaurantOrders = (companyId: number | null) => {
 		queryFn: async () => {
 			return (await orderApi.getDailyOrders(companyId ?? -1)).data;
 		},
-		enabled: normalizedCompanyId > 0
+		enabled: normalizedCompanyId > 0,
 	});
 
 	const createRestaurantOrderMutation = useMutation({
@@ -22,21 +21,22 @@ export const useRestaurantOrders = (companyId: number | null) => {
 		},
 		onSuccess: () => {
 			//TODO: Invalidar querys al momento de obtener los tickers
-			queryClient.invalidateQueries({ queryKey: ["sales-orders"] })
-            console.log("Ticket creado con exito");
+			queryClient.invalidateQueries({ queryKey: ["sales-orders"] });
+			console.log("Ticket creado con exito");
 		},
 	});
 
-	const assignWaiter = (targetCompanyId: number, ticketId: number, waiterId: number | null) => {
-		if (!Number.isInteger(targetCompanyId) || targetCompanyId <= 0) {
+	const assignWaiter = async (targetCompanyId: number, waiterId: number | null, restaurantOrderId: number) => {
+		if (!Number.isInteger(targetCompanyId) || targetCompanyId <= 0 || waiterId === null) {
 			return;
 		}
 
-		console.log(`Asigning waiter ${waiterId} to the ticket ${ticketId} for the company ${targetCompanyId}`)
+		await orderApi.assignWaiter({ restaurantOrderId, waiterId });
+		await ordersQuery.refetch();
 	};
 
 	return {
-		orders: ordersQuery.data ?? [] as RestaurantOrder[],
+		orders: ordersQuery.data ?? ([] as RestaurantOrder[]),
 		isLoadingRestaurantOrders: ordersQuery.isLoading,
 		isCreatingRestaurantOrder: createRestaurantOrderMutation.isPending,
 		createRestaurantOrder: async (targetCompanyId: number) => {
