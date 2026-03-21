@@ -103,7 +103,7 @@ export default function KdsPage() {
 			) : null}
 
 			{hasValidCompany && teams.length > 0 ? (
-				<div className="grid gap-4 xl:grid-cols-2">
+				<div className="flex flex-col gap-4">
 					{teams.map((team) => (
 						<KdsTeamSection
 							key={team.id}
