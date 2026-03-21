@@ -34,7 +34,7 @@ export type OrderItem = {
 	name: string;
 	unitPrice: number;
 	quantity: number;
-	note: string;
+	note: string | null;
 	restaurantOrderDetailId: number | null;
 	sentAt: string | null
 };

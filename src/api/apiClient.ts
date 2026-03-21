@@ -22,7 +22,7 @@ axiosInstance.interceptors.response.use(
 	(res: AxiosResponse) => {
 		// if (!res.data) throw new Error(t("sys.api.apiRequestFailed"));
 		
-		if(res.status === 200 || res.status == 201)
+		if(res.status === 200 || res.status === 201)
 			return res;
 		else 
 			throw new Error(t("sys.api.apiRequestFailed"));

@@ -32,9 +32,24 @@ const getOrderDetails = (restaurantOrderId: number) => {
 	})
 }
 
+const sendOrderToTeams = (restaurantOrderId: number) => {
+	return apiClient.request<void>({
+		url: `${SalesOrderApi.Order}/details/${restaurantOrderId}`,
+		method: "PATCH"
+	})
+}
+
+const getOrderTax = (restaurantOrderId: number) => {
+	return apiClient.get<number>({
+		url: `${SalesOrderApi.Order}/tax/${restaurantOrderId}`
+	});
+}
+
 export default {
 	createOrder,
 	getDailyOrders,
 	assignWaiter,
-	getOrderDetails
+	getOrderDetails,
+	sendOrderToTeams,
+	getOrderTax
 };

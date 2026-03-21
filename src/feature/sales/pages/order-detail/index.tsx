@@ -12,28 +12,38 @@ import { toast } from "sonner";
 import { ArrowLeft, CircleAlert, Minus, Plus, ShoppingBasket } from "lucide-react";
 import { useSelectedCompanyId } from "@/store/companyStore";
 import { useOrderDetail } from "../../hooks/use-order-detail";
-import { useTax } from "../../hooks/use-tax";
-import type { AvailableOrderProduct, OrderItem, OrderLocationState, ProductDraftQuantity } from "../../types/order-detail";
+import type {
+	AvailableOrderProduct,
+	OrderItem,
+	OrderLocationState,
+	ProductDraftQuantity,
+} from "../../types/order-detail";
+import { useRestaurantOrder } from "../../hooks/use-restaurant-order";
 
 export default function OrderDetailPage() {
 	const navigate = useNavigate();
 	const { state } = useLocation() as { state: OrderLocationState | null };
 	const params = useParams<{ restaurantOrderId: string }>();
-	const selectedCompanyId = useSelectedCompanyId();
-	const companyId = Number.parseInt(selectedCompanyId ?? "", 10);
 	const restaurantOrderId = Number.parseInt(params.restaurantOrderId ?? "", 10);
 	const hasValidOrder = Number.isInteger(restaurantOrderId) && restaurantOrderId > 0;
-	const hasValidCompany = Number.isInteger(companyId) && companyId > 0;
 
-	const { products, isLoadingProducts, hasProductsError, createOrderDetail, updateOrderDetail, isUpdatingOrderDetail, orderDetails } =
-		useOrderDetail({
-			restaurantOrderId: hasValidOrder ? restaurantOrderId : null,
-			enabled: hasValidOrder,
-		});
-	const taxQuery = useTax(hasValidCompany ? companyId : null);
+	const {
+		products,
+		isLoadingProducts,
+		hasProductsError,
+		createOrderDetail,
+		updateOrderDetail,
+		isUpdatingOrderDetail,
+		orderDetails,
+		sendOrderToTeam,
+	} = useOrderDetail({
+		restaurantOrderId: hasValidOrder ? restaurantOrderId : null,
+		enabled: hasValidOrder,
+	});
+
+	const taxQuery = useRestaurantOrder(restaurantOrderId);
 
 	const [orderItems, setOrderItems] = useState<Map<number, OrderItem>>(new Map());
-	const [hasHydrated, setHasHydrated] = useState(false);
 	const [draftQuantities, setDraftQuantities] = useState<ProductDraftQuantity>({});
 	const [stableProducts, setStableProducts] = useState<AvailableOrderProduct[]>([]);
 	const [pendingAddProductIds, setPendingAddProductIds] = useState<Set<number>>(new Set());
@@ -47,40 +57,31 @@ export default function OrderDetailPage() {
 
 		previousOrderIdRef.current = restaurantOrderId;
 		setOrderItems(new Map());
-        setDraftQuantities({});
+		setDraftQuantities({});
 		setPendingAddProductIds(new Set());
 		setPendingSaveNoteProductIds(new Set());
-		setHasHydrated(false);
 	}, [restaurantOrderId]);
 
-    useEffect(() => {
-        if(!orderDetails) {
-            return;
-        }
-        const productsMap: Map<number, OrderItem> = new Map();
-
-        for(let i = 0; i < orderDetails.length; i++) {
-            productsMap.set(orderDetails[i].productId, {
-                productId: orderDetails[i].productId,
-                name: orderDetails[i].name,
-                unitPrice: orderDetails[i].unitPrice,
-                quantity: orderDetails[i].quantity,
-                note: orderDetails[i].note,
-                restaurantOrderDetailId: orderDetails[i].restaurantOrderDetailId,
-                sentAt: orderDetails[i].sentAt
-            });
-        }
-
-        setOrderItems(productsMap);
-    }, [orderDetails])
-
 	useEffect(() => {
-		if (hasHydrated || products.length === 0) {
+		if (!orderDetails) {
 			return;
 		}
+		const productsMap: Map<number, OrderItem> = new Map();
 
-		setHasHydrated(true);
-	}, [hasHydrated, products.length]);
+		for (let i = 0; i < orderDetails.length; i++) {
+			productsMap.set(orderDetails[i].productId, {
+				productId: orderDetails[i].productId,
+				name: orderDetails[i].name,
+				unitPrice: orderDetails[i].unitPrice,
+				quantity: orderDetails[i].quantity,
+				note: orderDetails[i].note,
+				restaurantOrderDetailId: orderDetails[i].restaurantOrderDetailId,
+				sentAt: orderDetails[i].sentAt,
+			});
+		}
+
+		setOrderItems(productsMap);
+	}, [orderDetails]);
 
 	useEffect(() => {
 		if (products.length > 0) {
@@ -189,7 +190,7 @@ export default function OrderDetailPage() {
 						quantity: requestedQuantity,
 						note: "",
 						restaurantOrderDetailId,
-                        sentAt: null
+						sentAt: null,
 					});
 					return next;
 				});
@@ -211,7 +212,7 @@ export default function OrderDetailPage() {
 			await updateOrderDetail({
 				restaurantOrderDetailId: existingItem.restaurantOrderDetailId,
 				quantity: nextQuantity,
-				note: existingItem.note,
+				note: !existingItem.note?.trim() ? null : existingItem.note.trim(),
 			});
 
 			setOrderItems((previous) => {
@@ -248,7 +249,7 @@ export default function OrderDetailPage() {
 		await updateOrderDetail({
 			restaurantOrderDetailId: currentItem.restaurantOrderDetailId,
 			quantity: nextQuantity,
-			note: currentItem.note,
+			note: !currentItem.note?.trim() ? null : currentItem.note.trim(),
 		});
 
 		setOrderItems((previous) => {
@@ -290,7 +291,7 @@ export default function OrderDetailPage() {
 			await updateOrderDetail({
 				restaurantOrderDetailId: target.restaurantOrderDetailId,
 				quantity: target.quantity,
-				note: target.note,
+				note: !target.note?.trim() ? null : target.note.trim(),
 			});
 			toast.success(`Nota guardada para ${target.name}.`);
 		} finally {
@@ -366,6 +367,11 @@ export default function OrderDetailPage() {
 													<div>
 														<p className="font-medium text-text-primary">{item.name}</p>
 														<p className="text-sm text-muted-foreground">
+															{item.sentAt
+																? `Enviado a las ${new Date(item.sentAt).toLocaleTimeString()}`
+																: "Sin enviar"}
+														</p>
+														<p className="text-sm text-muted-foreground">
 															Precio unitario: {fCurrency(item.unitPrice)}
 														</p>
 													</div>
@@ -404,7 +410,7 @@ export default function OrderDetailPage() {
 
 												<div className="space-y-2">
 													<Textarea
-														value={item.note}
+														value={item.note ?? ""}
 														onChange={(event) => handleNoteChange(item.productId, event.target.value)}
 														placeholder="Notas para cocina (opcional)"
 														rows={2}
@@ -427,6 +433,17 @@ export default function OrderDetailPage() {
 									})}
 								</div>
 							)}
+
+							<Button
+								className="w-full"
+								onClick={async () => {
+									await sendOrderToTeam();
+									toast.success("Orden correctamente enviado a los equipos correspondientes");
+								}}
+								disabled={itemsList?.every((item) => item.sentAt !== null && item.sentAt !== undefined)}
+							>
+								Enviar orden
+							</Button>
 						</CardContent>
 					</Card>
 
