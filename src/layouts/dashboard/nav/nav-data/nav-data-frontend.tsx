@@ -62,6 +62,11 @@ export const frontendNavData: NavProps["data"] = [
 				icon: <Icon icon="local:ic-workbench" size="24" />,
 			},
 			{
+				title: "KDS",
+				path: "sales/kds",
+				icon: <Icon icon="local:bi-boxes" size="24" />,
+			},
+			{
 				title: "Impuesto",
 				path: "sales/tax",
 				icon: <Icon icon="local:bi-boxes" size="24" />,

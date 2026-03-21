@@ -10,7 +10,6 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router";
 import { toast } from "sonner";
 import { ArrowLeft, CircleAlert, Minus, Plus, ShoppingBasket } from "lucide-react";
-import { useSelectedCompanyId } from "@/store/companyStore";
 import { useOrderDetail } from "../../hooks/use-order-detail";
 import type {
 	AvailableOrderProduct,

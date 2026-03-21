@@ -5,6 +5,7 @@ import { Component } from "./utils";
 import OrderPage from "@/feature/sales/pages/order";
 import OrderDetailPage from "@/feature/sales/pages/order-detail";
 import TaxPage from "@/feature/sales/pages/tax";
+import KdsPage from "@/feature/sales/pages/kds";
 
 export function getFrontendDashboardRoutes(): RouteObject[] {
 	const frontendDashboardRoutes: RouteObject[] = [
@@ -30,6 +31,7 @@ export function getFrontendDashboardRoutes(): RouteObject[] {
 				{ path: "orders", element: <OrderPage /> },
 				{ path: "orders/:restaurantOrderId", element: <OrderDetailPage /> },
 				{ path: "tax", element: <TaxPage /> },
+				{ path: "kds", element: <KdsPage /> },
 			],
 		},
 		// {
