@@ -5,6 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/ui/
 import { Title } from "@/ui/typography";
 import { useSelectedCompanyId } from "@/store/companyStore";
 import { CircleAlert, Plus, ReceiptText, UsersRound } from "lucide-react";
+import { useNavigate } from "react-router";
 import { toast } from "sonner";
 import PosTicketCard from "../../components/PosTicketCard";
 import { useRestaurantOrders } from "../../hooks/use-pos-tickets";
@@ -12,6 +13,7 @@ import { useWaiters } from "../../hooks/use-waiters";
 import type { RestaurantOrder } from "../../types/order";
 
 export default function OrderPage() {
+	const navigate = useNavigate();
 	const selectedCompanyId = useSelectedCompanyId();
 	const companyId = Number.parseInt(selectedCompanyId ?? "", 10);
 	const hasValidCompany = Number.isInteger(companyId) && companyId > 0;
@@ -55,6 +57,12 @@ export default function OrderPage() {
 				? `Ticket #${restaurantOrder.dailyNumber} listo para cobro con ${assignedWaiter.name}.`
 				: `Ticket #${restaurantOrder.dailyNumber} listo para cobro.`,
 		);
+	};
+
+	const handleTakeOrder = (restaurantOrder: RestaurantOrder) => {
+		navigate(`/sales/orders/${restaurantOrder.restaurantOrderId}`, {
+			state: { restaurantOrder },
+		});
 	};
 
 	return (
@@ -146,6 +154,7 @@ export default function OrderPage() {
 									waiters={waitersQuery.data ?? []}
 									isLoadingWaiters={waitersQuery.isLoading}
 									onAssignWaiter={handleAssignWaiter}
+									onTakeOrder={handleTakeOrder}
 									onContinueToCheckout={handleContinueToCheckout}
 								/>
 							))}

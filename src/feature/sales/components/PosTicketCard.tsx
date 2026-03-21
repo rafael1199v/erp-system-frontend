@@ -13,6 +13,7 @@ type PosTicketCardProps = {
 	waiters: Waiter[];
 	isLoadingWaiters: boolean;
 	onAssignWaiter: (orderId: number, waiterId: number | null) => void;
+	onTakeOrder: (order: RestaurantOrder) => void;
 	onContinueToCheckout: (order: RestaurantOrder) => void;
 };
 
@@ -21,6 +22,7 @@ export default function PosTicketCard({
 	waiters,
 	isLoadingWaiters,
 	onAssignWaiter,
+	onTakeOrder,
 	onContinueToCheckout,
 }: PosTicketCardProps) {
 	const assignedWaiter = waiters.find((waiter) => waiter.id === restaurantOrder.waiterId);
@@ -47,7 +49,9 @@ export default function PosTicketCard({
 							<Clock3 className="size-3.5" />
 							Fecha
 						</Text>
-						<p className="mt-2 text-sm font-medium text-text-primary">{format(new Date(restaurantOrder.orderDatetime), "dd/MM/yyyy HH:mm")}</p>
+						<p className="mt-2 text-sm font-medium text-text-primary">
+							{format(new Date(restaurantOrder.orderDatetime), "dd/MM/yyyy HH:mm")}
+						</p>
 					</div>
 
 					<div className="rounded-lg border bg-muted/30 p-3">
@@ -80,8 +84,19 @@ export default function PosTicketCard({
 				</div>
 			</CardContent>
 
-			<CardFooter className="justify-end">
-				<Button variant="outline" disabled={restaurantOrder.orderStatusId !== OrderStatus.Open} onClick={() => onContinueToCheckout(restaurantOrder)}>
+			<CardFooter className="justify-end gap-2">
+				<Button
+					variant="secondary"
+					disabled={restaurantOrder.orderStatusId !== OrderStatus.Open}
+					onClick={() => onTakeOrder(restaurantOrder)}
+				>
+					Tomar pedido
+				</Button>
+				<Button
+					variant="outline"
+					disabled={restaurantOrder.orderStatusId !== OrderStatus.Open}
+					onClick={() => onContinueToCheckout(restaurantOrder)}
+				>
 					Continuar a cobro
 				</Button>
 			</CardFooter>

@@ -1,5 +1,6 @@
 import apiClient from "@/api/apiClient";
 import type { RestaurantOrder, CreateOrderRequest, CreateOrderResponse, AssignWaiter } from "../types/order";
+import { OrderItem } from "../types/order-detail";
 
 export enum SalesOrderApi {
 	Order = "/sales/order",
@@ -25,8 +26,15 @@ const assignWaiter = (assignWaiterRequest: AssignWaiter) => {
 	});
 }
 
+const getOrderDetails = (restaurantOrderId: number) => {
+	return apiClient.get<OrderItem[]>({
+		url: `${SalesOrderApi.Order}/details/${restaurantOrderId}`
+	})
+}
+
 export default {
 	createOrder,
 	getDailyOrders,
-	assignWaiter
+	assignWaiter,
+	getOrderDetails
 };

@@ -3,6 +3,7 @@ import { Navigate } from "react-router";
 import { Component } from "./utils";
 
 import OrderPage from "@/feature/sales/pages/order";
+import OrderDetailPage from "@/feature/sales/pages/order-detail";
 import TaxPage from "@/feature/sales/pages/tax";
 
 export function getFrontendDashboardRoutes(): RouteObject[] {
@@ -22,12 +23,14 @@ export function getFrontendDashboardRoutes(): RouteObject[] {
 		{ path: "categories", element: Component("/pages/category") },
 		{ path: "units", element: Component("/pages/unit") },
 
-		{ path: "sales",
+		{
+			path: "sales",
 			children: [
 				{ index: true, element: <Navigate to="orders" replace /> },
 				{ path: "orders", element: <OrderPage /> },
-				{ path: "tax", element: <TaxPage /> }
-			]
+				{ path: "orders/:restaurantOrderId", element: <OrderDetailPage /> },
+				{ path: "tax", element: <TaxPage /> },
+			],
 		},
 		// {
 		// 	path: "components",
