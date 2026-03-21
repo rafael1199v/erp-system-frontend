@@ -1,6 +1,6 @@
 import apiClient from "@/api/apiClient";
 import type { RestaurantOrder, CreateOrderRequest, CreateOrderResponse, AssignWaiter } from "../types/order";
-import { OrderItem } from "../types/order-detail";
+import type { OrderItem } from "../types/order-detail";
 
 export enum SalesOrderApi {
 	Order = "/sales/order",
