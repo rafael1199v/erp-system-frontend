@@ -9,9 +9,11 @@ import { fCurrency } from "@/utils/format-number";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router";
 import { toast } from "sonner";
-import { ArrowLeft, CircleAlert, Minus, Plus, ShoppingBasket } from "lucide-react";
+import { ArrowLeft, CircleAlert, Minus, Plus, RotateCcw, ShoppingBasket } from "lucide-react";
 import { canCancelFromPos, getOrderDetailStatusLabel, OrderDetailStatus } from "../../enums/kds";
+import ResendCountBadge from "../../components/ResendCountBadge";
 import { useOrderDetail } from "../../hooks/use-order-detail";
+import { useResendOrderDetail } from "../../hooks/use-resend-order-detail";
 import type {
 	AvailableOrderProduct,
 	OrderItem,
@@ -52,6 +54,10 @@ export default function OrderDetailPage() {
 		enabled: hasValidOrder,
 	});
 
+	const { resendOrderDetail, isResendingOrderDetail } = useResendOrderDetail({
+		restaurantOrderId: hasValidOrder ? restaurantOrderId : null,
+	});
+
 	const taxQuery = useRestaurantOrder(restaurantOrderId);
 
 	const [orderItems, setOrderItems] = useState<Map<number, OrderItem>>(new Map());
@@ -60,6 +66,7 @@ export default function OrderDetailPage() {
 	const [pendingAddProductIds, setPendingAddProductIds] = useState<Set<number>>(new Set());
 	const [pendingSaveNoteDetailIds, setPendingSaveNoteDetailIds] = useState<Set<number>>(new Set());
 	const [pendingCancelDetailIds, setPendingCancelDetailIds] = useState<Set<number>>(new Set());
+	const [pendingResendDetailIds, setPendingResendDetailIds] = useState<Set<number>>(new Set());
 	const previousOrderIdRef = useRef<number | null>(null);
 
 	useEffect(() => {
@@ -73,6 +80,7 @@ export default function OrderDetailPage() {
 		setPendingAddProductIds(new Set());
 		setPendingSaveNoteDetailIds(new Set());
 		setPendingCancelDetailIds(new Set());
+		setPendingResendDetailIds(new Set());
 	}, [restaurantOrderId]);
 
 	useEffect(() => {
@@ -101,7 +109,7 @@ export default function OrderDetailPage() {
 				sentAt: sourceItem.sentAt,
 				restaurantOrderStatusId: sourceItem.restaurantOrderStatusId,
 				restaurantOrderStatus: sourceItem.restaurantOrderStatus,
-				resendCount: sourceItem.resendCount
+				resendCount: sourceItem.resendCount ?? 0,
 			});
 		}
 
@@ -183,6 +191,23 @@ export default function OrderDetailPage() {
 			return next;
 		});
 	};
+
+	const setResendPending = (restaurantOrderDetailId: number, isPending: boolean) => {
+		setPendingResendDetailIds((previous) => {
+			const next = new Set(previous);
+			if (isPending) {
+				next.add(restaurantOrderDetailId);
+			} else {
+				next.delete(restaurantOrderDetailId);
+			}
+			return next;
+		});
+	};
+
+	const canResendOrderItem = (item: OrderItem) => {
+		const statusId = getOrderItemStatusId(item);
+		return item.sentAt !== null && statusId !== OrderDetailStatus.Delivered && statusId !== OrderDetailStatus.Canceled;
+	};
 	const validateAvailableProduct = (product: AvailableOrderProduct) => {
 		if (!product.isAvailable || product.productStatus !== "Available") {
 			toast.error(`${product.name} no esta disponible para agregar.`);
@@ -251,7 +276,7 @@ export default function OrderDetailPage() {
 						sentAt: null,
 						restaurantOrderStatusId: OrderDetailStatus.Created,
 						restaurantOrderStatus: "Pendiente",
-						resendCount: 0
+						resendCount: 0,
 					});
 					return next;
 				});
@@ -389,6 +414,41 @@ export default function OrderDetailPage() {
 		});
 	};
 
+	const handleResendItem = async (restaurantOrderDetailId: number) => {
+		const target = orderItems.get(restaurantOrderDetailId);
+		if (!target || !target.restaurantOrderDetailId) {
+			return;
+		}
+
+		if (pendingResendDetailIds.has(restaurantOrderDetailId)) {
+			return;
+		}
+
+		if (!canResendOrderItem(target)) {
+			toast.error("Solo se pueden reenviar items enviados que no esten en estado Listo o Cancelado.");
+			return;
+		}
+
+		setResendPending(restaurantOrderDetailId, true);
+
+		try {
+			await resendOrderDetail(restaurantOrderDetailId);
+			setOrderItems((previous) => {
+				const next = new Map(previous);
+				next.set(restaurantOrderDetailId, {
+					...target,
+					resendCount: (target.resendCount ?? 0) + 1,
+				});
+				return next;
+			});
+			toast.success(`Comanda reenviada para ${target.name}.`);
+		} catch {
+			toast.error("No se pudo reenviar la comanda. Intenta nuevamente.");
+		} finally {
+			setResendPending(restaurantOrderDetailId, false);
+		}
+	};
+
 	const handleSaveNote = async (restaurantOrderDetailId: number) => {
 		if (pendingSaveNoteDetailIds.has(restaurantOrderDetailId)) {
 			return;
@@ -464,7 +524,9 @@ export default function OrderDetailPage() {
 					<Card>
 						<CardHeader>
 							<CardTitle>Items seleccionados</CardTitle>
-							<CardDescription>Modifica cantidades, notas o cancela items pendientes</CardDescription>
+							<CardDescription>
+								Modifica cantidades y notas, reenvia comandas ya enviadas y usa reimpresion como accion placeholder.
+							</CardDescription>
 						</CardHeader>
 						<CardContent className="space-y-4">
 							{itemsList.length === 0 ? (
@@ -498,9 +560,10 @@ export default function OrderDetailPage() {
 												</div>
 
 												<div className="flex flex-wrap items-center gap-2">
-													<Badge variant="outline">
-														{getOrderDetailStatusLabel(item.restaurantOrderStatusId, item.restaurantOrderStatus)}
-													</Badge>
+														<Badge variant="outline">
+															{getOrderDetailStatusLabel(item.restaurantOrderStatusId, item.restaurantOrderStatus)}
+														</Badge>
+														<ResendCountBadge resendCount={item.resendCount} />
 													<Button
 														variant="outline"
 														size="icon"
@@ -553,6 +616,28 @@ export default function OrderDetailPage() {
 															? "Cancelando..."
 															: "Cancelar item"}
 													</Button>
+														<Button
+															variant="secondary"
+															size="sm"
+															disabled={
+																!item.restaurantOrderDetailId ||
+																!canResendOrderItem(item) ||
+																isResendingOrderDetail ||
+																pendingResendDetailIds.has(item.restaurantOrderDetailId)
+															}
+															onClick={() => {
+																if (!item.restaurantOrderDetailId) {
+																	return;
+																}
+
+																void handleResendItem(item.restaurantOrderDetailId);
+															}}
+														>
+															<RotateCcw className="size-4" />
+															{item.restaurantOrderDetailId && pendingResendDetailIds.has(item.restaurantOrderDetailId)
+																? "Reenviando..."
+																: "Reenviar"}
+														</Button>
 												</div>
 
 												<div className="space-y-2">
@@ -640,6 +725,10 @@ export default function OrderDetailPage() {
 							) : null}
 						</CardContent>
 					</Card>
+					{/* <Button variant="outline" size="sm" onClick={() => handleReprintItem(item.name)}>
+						<Printer className="size-4" />
+						Reimprimir
+					</Button> */}
 				</div>
 
 				<Card>
