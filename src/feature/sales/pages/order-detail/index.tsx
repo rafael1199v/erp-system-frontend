@@ -101,6 +101,7 @@ export default function OrderDetailPage() {
 				sentAt: sourceItem.sentAt,
 				restaurantOrderStatusId: sourceItem.restaurantOrderStatusId,
 				restaurantOrderStatus: sourceItem.restaurantOrderStatus,
+				resendCount: sourceItem.resendCount
 			});
 		}
 
@@ -250,6 +251,7 @@ export default function OrderDetailPage() {
 						sentAt: null,
 						restaurantOrderStatusId: OrderDetailStatus.Created,
 						restaurantOrderStatus: "Pendiente",
+						resendCount: 0
 					});
 					return next;
 				});
