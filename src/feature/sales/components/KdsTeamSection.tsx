@@ -12,6 +12,8 @@ type KdsTeamSectionProps = {
 	isLoadingItems: boolean;
 	hasItemsError: boolean;
 	hideCanceledItems: boolean;
+	isUpdatingStatus: boolean;
+	onAdvanceStatus: (restaurantOrderDetailId: number, nextStatusId: number) => Promise<void>;
 };
 
 export default function KdsTeamSection({
@@ -20,6 +22,8 @@ export default function KdsTeamSection({
 	isLoadingItems,
 	hasItemsError,
 	hideCanceledItems,
+	isUpdatingStatus,
+	onAdvanceStatus,
 }: KdsTeamSectionProps) {
 	const visibleItems = hideCanceledItems
 		? items.filter((item) => item.orderItemStatusId !== OrderDetailStatus.Canceled)
@@ -64,7 +68,12 @@ export default function KdsTeamSection({
 				{!hasItemsError && !isLoadingItems && visibleItems.length > 0 ? (
 					<div className="space-y-3">
 						{visibleItems.map((item) => (
-							<KdsItemCard key={`${item.restaurantOrderDetailId}-${item.productId}`} item={item} />
+							<KdsItemCard
+								key={`${item.restaurantOrderDetailId}-${item.productId}`}
+								item={item}
+								onAdvanceStatus={onAdvanceStatus}
+								isUpdatingStatus={isUpdatingStatus}
+							/>
 						))}
 					</div>
 				) : null}

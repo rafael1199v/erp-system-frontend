@@ -1,10 +1,13 @@
 import { Badge } from "@/ui/badge";
+import { Button } from "@/ui/button";
 import { Card, CardContent } from "@/ui/card";
-import { OrderDetailStatus } from "../enums/kds";
+import { canAdvanceKdsStatus, getNextKdsStatus, getOrderDetailStatusLabel, OrderDetailStatus } from "../enums/kds";
 import type { KdsTeamItem } from "../types/kds";
 
 type KdsItemCardProps = {
 	item: KdsTeamItem;
+	onAdvanceStatus: (restaurantOrderDetailId: number, nextStatusId: number) => Promise<void>;
+	isUpdatingStatus: boolean;
 };
 
 const getStatusVariant = (statusId: number) => {
@@ -22,8 +25,16 @@ const getStatusVariant = (statusId: number) => {
 	}
 };
 
-export default function KdsItemCard({ item }: KdsItemCardProps) {
+export default function KdsItemCard({ item, onAdvanceStatus, isUpdatingStatus }: KdsItemCardProps) {
 	const hasNote = Boolean(item.note?.trim());
+	const nextStatus = getNextKdsStatus(item.orderItemStatusId);
+	const canAdvance = canAdvanceKdsStatus(item.orderItemStatusId) && nextStatus !== null;
+	const actionLabel =
+		nextStatus === OrderDetailStatus.Preparing
+			? "Iniciar preparacion"
+			: nextStatus === OrderDetailStatus.Delivered
+				? "Marcar como listo"
+				: "Actualizar estado";
 
 	return (
 		<Card className="gap-3 p-0">
@@ -32,7 +43,9 @@ export default function KdsItemCard({ item }: KdsItemCardProps) {
 					<div>
 						<p className="font-medium text-text-primary">{item.productName}</p>
 					</div>
-					<Badge variant={getStatusVariant(item.orderItemStatusId)}>{item.orderItemStatus}</Badge>
+					<Badge variant={getStatusVariant(item.orderItemStatusId)}>
+						{getOrderDetailStatusLabel(item.orderItemStatusId, item.orderItemStatus)}
+					</Badge>
 				</div>
 
 				<div className="flex flex-wrap gap-2">
@@ -43,6 +56,24 @@ export default function KdsItemCard({ item }: KdsItemCardProps) {
 					<p className="text-xs font-medium text-muted-foreground">Nota</p>
 					<p className="mt-1 text-sm text-text-primary">{hasNote ? item.note : "Sin nota"}</p>
 				</div>
+
+				{canAdvance ? (
+					<div className="flex justify-end">
+						<Button
+							size="sm"
+							onClick={() => {
+								if (!nextStatus) {
+									return;
+								}
+
+								void onAdvanceStatus(item.restaurantOrderDetailId, nextStatus);
+							}}
+							disabled={isUpdatingStatus}
+						>
+							{isUpdatingStatus ? "Actualizando..." : actionLabel}
+						</Button>
+					</div>
+				) : null}
 			</CardContent>
 		</Card>
 	);
