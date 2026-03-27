@@ -25,6 +25,8 @@ export default function KdsPage() {
 		isLoadingItemsByTeamId,
 		hasItemsErrorByTeamId,
 		refreshAll,
+		isUpdatingItemStatus,
+		updateItemStatus,
 	} = useKds(hasValidCompany ? companyId : null);
 
 	const handleRefresh = async () => {
@@ -34,6 +36,15 @@ export default function KdsPage() {
 
 		await refreshAll();
 		toast.success("Informacion KDS actualizada correctamente.");
+	};
+
+	const handleAdvanceStatus = async (restaurantOrderDetailId: number, nextStatusId: number) => {
+		try {
+			await updateItemStatus({ restaurantOrderDetailId, newStatusId: nextStatusId });
+			toast.success("Estado del item actualizado correctamente.");
+		} catch {
+			toast.error("No se pudo actualizar el estado del item. Intenta nuevamente.");
+		}
 	};
 
 	return (
@@ -112,6 +123,8 @@ export default function KdsPage() {
 							isLoadingItems={isLoadingItemsByTeamId[team.id] ?? false}
 							hasItemsError={hasItemsErrorByTeamId[team.id] ?? false}
 							hideCanceledItems={hideCanceledItems}
+							isUpdatingStatus={isUpdatingItemStatus}
+							onAdvanceStatus={handleAdvanceStatus}
 						/>
 					))}
 				</div>

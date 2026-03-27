@@ -10,6 +10,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router";
 import { toast } from "sonner";
 import { ArrowLeft, CircleAlert, Minus, Plus, ShoppingBasket } from "lucide-react";
+import { canCancelFromPos, getOrderDetailStatusLabel, OrderDetailStatus } from "../../enums/kds";
 import { useOrderDetail } from "../../hooks/use-order-detail";
 import type {
 	AvailableOrderProduct,
@@ -18,6 +19,15 @@ import type {
 	ProductDraftQuantity,
 } from "../../types/order-detail";
 import { useRestaurantOrder } from "../../hooks/use-restaurant-order";
+
+const getOrderItemStatusId = (item: OrderItem) => {
+	return item.restaurantOrderStatusId;
+};
+
+const isEditableOrderItem = (item: OrderItem) => {
+	const statusId = getOrderItemStatusId(item);
+	return statusId === OrderDetailStatus.Created || statusId === OrderDetailStatus.Preparing;
+};
 
 export default function OrderDetailPage() {
 	const navigate = useNavigate();
@@ -32,7 +42,9 @@ export default function OrderDetailPage() {
 		hasProductsError,
 		createOrderDetail,
 		updateOrderDetail,
+		cancelOrderDetail,
 		isUpdatingOrderDetail,
+		isCancelingOrderDetail,
 		orderDetails,
 		sendOrderToTeam,
 	} = useOrderDetail({
@@ -46,7 +58,8 @@ export default function OrderDetailPage() {
 	const [draftQuantities, setDraftQuantities] = useState<ProductDraftQuantity>({});
 	const [stableProducts, setStableProducts] = useState<AvailableOrderProduct[]>([]);
 	const [pendingAddProductIds, setPendingAddProductIds] = useState<Set<number>>(new Set());
-	const [pendingSaveNoteProductIds, setPendingSaveNoteProductIds] = useState<Set<number>>(new Set());
+	const [pendingSaveNoteDetailIds, setPendingSaveNoteDetailIds] = useState<Set<number>>(new Set());
+	const [pendingCancelDetailIds, setPendingCancelDetailIds] = useState<Set<number>>(new Set());
 	const previousOrderIdRef = useRef<number | null>(null);
 
 	useEffect(() => {
@@ -58,28 +71,40 @@ export default function OrderDetailPage() {
 		setOrderItems(new Map());
 		setDraftQuantities({});
 		setPendingAddProductIds(new Set());
-		setPendingSaveNoteProductIds(new Set());
+		setPendingSaveNoteDetailIds(new Set());
+		setPendingCancelDetailIds(new Set());
 	}, [restaurantOrderId]);
 
 	useEffect(() => {
 		if (!orderDetails) {
 			return;
 		}
-		const productsMap: Map<number, OrderItem> = new Map();
+		const detailsMap: Map<number, OrderItem> = new Map();
 
 		for (let i = 0; i < orderDetails.length; i++) {
-			productsMap.set(orderDetails[i].productId, {
-				productId: orderDetails[i].productId,
-				name: orderDetails[i].name,
-				unitPrice: orderDetails[i].unitPrice,
-				quantity: orderDetails[i].quantity,
-				note: orderDetails[i].note,
-				restaurantOrderDetailId: orderDetails[i].restaurantOrderDetailId,
-				sentAt: orderDetails[i].sentAt,
+			const sourceItem = orderDetails[i];
+			if (sourceItem.restaurantOrderStatusId === OrderDetailStatus.Canceled) {
+				continue;
+			}
+
+			if (!sourceItem.restaurantOrderDetailId) {
+				continue;
+			}
+
+			detailsMap.set(sourceItem.restaurantOrderDetailId, {
+				productId: sourceItem.productId,
+				name: sourceItem.name,
+				unitPrice: sourceItem.unitPrice,
+				quantity: sourceItem.quantity,
+				note: sourceItem.note,
+				restaurantOrderDetailId: sourceItem.restaurantOrderDetailId,
+				sentAt: sourceItem.sentAt,
+				restaurantOrderStatusId: sourceItem.restaurantOrderStatusId,
+				restaurantOrderStatus: sourceItem.restaurantOrderStatus,
 			});
 		}
 
-		setOrderItems(productsMap);
+		setOrderItems(detailsMap);
 	}, [orderDetails]);
 
 	useEffect(() => {
@@ -93,7 +118,14 @@ export default function OrderDetailPage() {
 	}, [stableProducts]);
 
 	const itemsList = useMemo(() => {
-		return Array.from(orderItems.values()).sort((left, right) => left.name.localeCompare(right.name));
+		return Array.from(orderItems.values()).sort((left, right) => {
+			const nameSort = left.name.localeCompare(right.name);
+			if (nameSort !== 0) {
+				return nameSort;
+			}
+
+			return (left.restaurantOrderDetailId ?? 0) - (right.restaurantOrderDetailId ?? 0);
+		});
 	}, [orderItems]);
 
 	const subtotal = useMemo(() => {
@@ -127,18 +159,29 @@ export default function OrderDetailPage() {
 		});
 	};
 
-	const setSaveNotePending = (productId: number, isPending: boolean) => {
-		setPendingSaveNoteProductIds((previous) => {
+	const setSaveNotePending = (restaurantOrderDetailId: number, isPending: boolean) => {
+		setPendingSaveNoteDetailIds((previous) => {
 			const next = new Set(previous);
 			if (isPending) {
-				next.add(productId);
+				next.add(restaurantOrderDetailId);
 			} else {
-				next.delete(productId);
+				next.delete(restaurantOrderDetailId);
 			}
 			return next;
 		});
 	};
 
+	const setCancelPending = (restaurantOrderDetailId: number, isPending: boolean) => {
+		setPendingCancelDetailIds((previous) => {
+			const next = new Set(previous);
+			if (isPending) {
+				next.add(restaurantOrderDetailId);
+			} else {
+				next.delete(restaurantOrderDetailId);
+			}
+			return next;
+		});
+	};
 	const validateAvailableProduct = (product: AvailableOrderProduct) => {
 		if (!product.isAvailable || product.productStatus !== "Available") {
 			toast.error(`${product.name} no esta disponible para agregar.`);
@@ -171,7 +214,22 @@ export default function OrderDetailPage() {
 				return;
 			}
 
-			const existingItem = orderItems.get(product.productId);
+			const editableCandidate = Array.from(orderItems.values())
+				.filter((item) => item.productId === product.productId && isEditableOrderItem(item))
+				.sort((left, right) => {
+					if (getOrderItemStatusId(left) !== getOrderItemStatusId(right)) {
+						if (getOrderItemStatusId(left) === OrderDetailStatus.Preparing) {
+							return -1;
+						}
+						if (getOrderItemStatusId(right) === OrderDetailStatus.Preparing) {
+							return 1;
+						}
+					}
+
+					return (right.restaurantOrderDetailId ?? 0) - (left.restaurantOrderDetailId ?? 0);
+				})[0];
+
+			const existingItem = editableCandidate;
 			if (!existingItem) {
 				const restaurantOrderDetailId = await createOrderDetail({
 					restaurantOrderId,
@@ -182,7 +240,7 @@ export default function OrderDetailPage() {
 
 				setOrderItems((previous) => {
 					const next = new Map(previous);
-					next.set(product.productId, {
+					next.set(restaurantOrderDetailId, {
 						productId: product.productId,
 						name: product.name,
 						unitPrice: product.sellPrice,
@@ -190,6 +248,8 @@ export default function OrderDetailPage() {
 						note: "",
 						restaurantOrderDetailId,
 						sentAt: null,
+						restaurantOrderStatusId: OrderDetailStatus.Created,
+						restaurantOrderStatus: "Pendiente",
 					});
 					return next;
 				});
@@ -214,9 +274,14 @@ export default function OrderDetailPage() {
 				note: !existingItem.note?.trim() ? null : existingItem.note.trim(),
 			});
 
+			const existingDetailId = existingItem.restaurantOrderDetailId;
+			if (!existingDetailId) {
+				return;
+			}
+
 			setOrderItems((previous) => {
 				const next = new Map(previous);
-				next.set(product.productId, {
+				next.set(existingDetailId, {
 					...existingItem,
 					quantity: nextQuantity,
 				});
@@ -228,9 +293,20 @@ export default function OrderDetailPage() {
 		}
 	};
 
-	const updateItemQuantity = async (product: AvailableOrderProduct, delta: 1 | -1) => {
-		const currentItem = orderItems.get(product.productId);
+	const updateItemQuantity = async (item: OrderItem, product: AvailableOrderProduct, delta: 1 | -1) => {
+		if (!item.restaurantOrderDetailId) {
+			return;
+		}
+
+		const currentItem = orderItems.get(item.restaurantOrderDetailId);
 		if (!currentItem || !currentItem.restaurantOrderDetailId) {
+			return;
+		}
+
+		const currentDetailId = currentItem.restaurantOrderDetailId;
+
+		if (!isEditableOrderItem(currentItem)) {
+			toast.error("Este item no se puede editar porque ya fue enviado o finalizado.");
 			return;
 		}
 
@@ -253,7 +329,7 @@ export default function OrderDetailPage() {
 
 		setOrderItems((previous) => {
 			const next = new Map(previous);
-			next.set(product.productId, {
+			next.set(currentDetailId, {
 				...currentItem,
 				quantity: nextQuantity,
 			});
@@ -261,30 +337,72 @@ export default function OrderDetailPage() {
 		});
 	};
 
-	const handleNoteChange = (productId: number, note: string) => {
+	const handleCancelItem = async (restaurantOrderDetailId: number) => {
+		const target = orderItems.get(restaurantOrderDetailId);
+		if (!target || !target.restaurantOrderDetailId) {
+			return;
+		}
+
+		if (pendingCancelDetailIds.has(target.restaurantOrderDetailId)) {
+			return;
+		}
+
+		if (!canCancelFromPos(getOrderItemStatusId(target))) {
+			toast.error("Solo se pueden cancelar items en estado Pendiente.");
+			return;
+		}
+
+		setCancelPending(target.restaurantOrderDetailId, true);
+
+		try {
+			await cancelOrderDetail({
+				restaurantOrderDetailId: target.restaurantOrderDetailId,
+				newStatusId: OrderDetailStatus.Canceled,
+			});
+
+			setOrderItems((previous) => {
+				const next = new Map(previous);
+				next.delete(restaurantOrderDetailId);
+				return next;
+			});
+
+			toast.success(`${target.name} cancelado correctamente.`);
+		} catch {
+			toast.error("No se pudo cancelar el item. Intenta nuevamente.");
+		} finally {
+			setCancelPending(target.restaurantOrderDetailId, false);
+		}
+	};
+
+	const handleNoteChange = (restaurantOrderDetailId: number, note: string) => {
 		setOrderItems((previous) => {
-			const target = previous.get(productId);
+			const target = previous.get(restaurantOrderDetailId);
 			if (!target) {
 				return previous;
 			}
 
 			const next = new Map(previous);
-			next.set(productId, { ...target, note });
+			next.set(restaurantOrderDetailId, { ...target, note });
 			return next;
 		});
 	};
 
-	const handleSaveNote = async (productId: number) => {
-		if (pendingSaveNoteProductIds.has(productId)) {
+	const handleSaveNote = async (restaurantOrderDetailId: number) => {
+		if (pendingSaveNoteDetailIds.has(restaurantOrderDetailId)) {
 			return;
 		}
 
-		const target = orderItems.get(productId);
+		const target = orderItems.get(restaurantOrderDetailId);
 		if (!target || !target.restaurantOrderDetailId) {
 			return;
 		}
 
-		setSaveNotePending(productId, true);
+		if (!isEditableOrderItem(target)) {
+			toast.error("Este item no se puede editar porque ya fue enviado o finalizado.");
+			return;
+		}
+
+		setSaveNotePending(restaurantOrderDetailId, true);
 
 		try {
 			await updateOrderDetail({
@@ -294,7 +412,7 @@ export default function OrderDetailPage() {
 			});
 			toast.success(`Nota guardada para ${target.name}.`);
 		} finally {
-			setSaveNotePending(productId, false);
+			setSaveNotePending(restaurantOrderDetailId, false);
 		}
 	};
 
@@ -344,7 +462,7 @@ export default function OrderDetailPage() {
 					<Card>
 						<CardHeader>
 							<CardTitle>Items seleccionados</CardTitle>
-							<CardDescription>Modifica cantidades y agrega notas para cocina.</CardDescription>
+							<CardDescription>Modifica cantidades, notas o cancela items pendientes</CardDescription>
 						</CardHeader>
 						<CardContent className="space-y-4">
 							{itemsList.length === 0 ? (
@@ -361,7 +479,7 @@ export default function OrderDetailPage() {
 										const itemSubtotal = item.quantity * item.unitPrice;
 
 										return (
-											<div key={item.productId} className="space-y-3 rounded-xl border bg-muted/10 p-4">
+											<div key={item.restaurantOrderDetailId} className="space-y-3 rounded-xl border bg-muted/10 p-4">
 												<div className="flex flex-wrap items-center justify-between gap-2">
 													<div>
 														<p className="font-medium text-text-primary">{item.name}</p>
@@ -378,13 +496,18 @@ export default function OrderDetailPage() {
 												</div>
 
 												<div className="flex flex-wrap items-center gap-2">
+													<Badge variant="outline">
+														{getOrderDetailStatusLabel(item.restaurantOrderStatusId, item.restaurantOrderStatus)}
+													</Badge>
 													<Button
 														variant="outline"
 														size="icon"
-														disabled={!product || isUpdatingOrderDetail}
+														disabled={
+															!product || !isEditableOrderItem(item) || isUpdatingOrderDetail || isCancelingOrderDetail
+														}
 														onClick={() => {
 															if (product) {
-																void updateItemQuantity(product, -1);
+																void updateItemQuantity(item, product, -1);
 															}
 														}}
 													>
@@ -396,34 +519,78 @@ export default function OrderDetailPage() {
 													<Button
 														variant="outline"
 														size="icon"
-														disabled={!product || isUpdatingOrderDetail}
+														disabled={
+															!product || !isEditableOrderItem(item) || isUpdatingOrderDetail || isCancelingOrderDetail
+														}
 														onClick={() => {
 															if (product) {
-																void updateItemQuantity(product, 1);
+																void updateItemQuantity(item, product, 1);
 															}
 														}}
 													>
 														<Plus className="size-4" />
+													</Button>
+													<Button
+														variant="destructive"
+														size="sm"
+														disabled={
+															!item.restaurantOrderDetailId ||
+															!canCancelFromPos(getOrderItemStatusId(item)) ||
+															isUpdatingOrderDetail ||
+															isCancelingOrderDetail
+														}
+														onClick={() => {
+															if (!item.restaurantOrderDetailId) {
+																return;
+															}
+
+															void handleCancelItem(item.restaurantOrderDetailId);
+														}}
+													>
+														{item.restaurantOrderDetailId && pendingCancelDetailIds.has(item.restaurantOrderDetailId)
+															? "Cancelando..."
+															: "Cancelar item"}
 													</Button>
 												</div>
 
 												<div className="space-y-2">
 													<Textarea
 														value={item.note ?? ""}
-														onChange={(event) => handleNoteChange(item.productId, event.target.value)}
+														onChange={(event) => {
+															if (!item.restaurantOrderDetailId) {
+																return;
+															}
+
+															handleNoteChange(item.restaurantOrderDetailId, event.target.value);
+														}}
 														placeholder="Notas para cocina (opcional)"
 														rows={2}
+														disabled={!isEditableOrderItem(item)}
 													/>
 													<div className="flex justify-end">
 														<Button
 															variant="secondary"
 															size="sm"
-															disabled={pendingSaveNoteProductIds.has(item.productId)}
+															disabled={
+																!item.restaurantOrderDetailId ||
+																!isEditableOrderItem(item) ||
+																(item.restaurantOrderDetailId
+																	? pendingSaveNoteDetailIds.has(item.restaurantOrderDetailId)
+																	: false) ||
+																isCancelingOrderDetail
+															}
 															onClick={() => {
-																void handleSaveNote(item.productId);
+																if (!item.restaurantOrderDetailId) {
+																	return;
+																}
+
+																void handleSaveNote(item.restaurantOrderDetailId);
 															}}
 														>
-															{pendingSaveNoteProductIds.has(item.productId) ? "Guardando..." : "Guardar nota"}
+															{item.restaurantOrderDetailId &&
+															pendingSaveNoteDetailIds.has(item.restaurantOrderDetailId)
+																? "Guardando..."
+																: "Guardar nota"}
 														</Button>
 													</div>
 												</div>
