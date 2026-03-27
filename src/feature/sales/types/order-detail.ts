@@ -23,6 +23,11 @@ export type UpdateOrderDetailQuantityRequest = {
 	note?: string | null;
 };
 
+export type UpdateOrderDetailStatusRequest = {
+	restaurantOrderDetailId: number;
+	newStatusId: number;
+};
+
 export type CreateOrderDetailResponse = {
 	restaurantOrderDetailId: number;
 };
@@ -36,7 +41,9 @@ export type OrderItem = {
 	quantity: number;
 	note: string | null;
 	restaurantOrderDetailId: number | null;
-	sentAt: string | null
+	sentAt: string | null;
+	restaurantOrderStatusId: number;
+	restaurantOrderStatus: string;
 };
 
 export type OrderLocationState = {
