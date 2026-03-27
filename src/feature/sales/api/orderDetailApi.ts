@@ -30,8 +30,16 @@ const updateOrderDetail = (payload: UpdateOrderDetailQuantityRequest) => {
 	});
 };
 
+const resendOrderDetail = (restaurantOrderDetailId: number) => {
+	return apiClient.request<void>({
+		url: `${SalesOrderDetailApi.OrderDetail}/${restaurantOrderDetailId}`,
+		method: "PATCH",
+	});
+};
+
 export default {
 	getProductsByRestaurantOrder,
 	createOrderDetail,
 	updateOrderDetail,
+	resendOrderDetail,
 };
