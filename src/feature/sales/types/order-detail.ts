@@ -44,6 +44,7 @@ export type OrderItem = {
 	sentAt: string | null;
 	restaurantOrderStatusId: number;
 	restaurantOrderStatus: string;
+	resendCount: number;
 };
 
 export type OrderLocationState = {

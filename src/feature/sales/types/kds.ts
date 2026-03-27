@@ -14,4 +14,5 @@ export type KdsTeamItem = {
 	orderItemStatus: string;
 	orderItemStatusId: number;
 	note: string | null;
+	resendCount: number;
 };
