@@ -1,9 +1,11 @@
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import kdsApi from "../api/kdsApi";
 import orderDetailApi from "../api/orderDetailApi";
 import type {
 	AvailableOrderProduct,
 	CreateOrderDetailRequest,
 	CreateOrderDetailResponse,
+	UpdateOrderDetailStatusRequest,
 	UpdateOrderDetailQuantityRequest,
 } from "../types/order-detail";
 import orderApi from "../api/orderApi";
@@ -45,7 +47,8 @@ export const useOrderDetail = ({ restaurantOrderId, enabled }: UseOrderDetailPar
 		queryFn: async() => {
 			const response = await orderApi.getOrderDetails(normalizedOrderId);
 			return response.data;
-		}
+		},
+		enabled: enabled && normalizedOrderId > 0,
 	})
 
 	const createOrderDetailMutation = useMutation({
@@ -53,11 +56,26 @@ export const useOrderDetail = ({ restaurantOrderId, enabled }: UseOrderDetailPar
 			const response = await orderDetailApi.createOrderDetail(payload);
 			return response.data;
 		},
+		onSuccess: async () => {
+			await queryClient.invalidateQueries({ queryKey: ["sales-order-details", normalizedOrderId] });
+		},
 	});
 
 	const updateOrderDetailMutation = useMutation({
 		mutationFn: async (payload: UpdateOrderDetailQuantityRequest) => {
 			await orderDetailApi.updateOrderDetail(payload);
+		},
+		onSuccess: async () => {
+			await queryClient.invalidateQueries({ queryKey: ["sales-order-details", normalizedOrderId] });
+		},
+	});
+
+	const cancelOrderDetailMutation = useMutation({
+		mutationFn: async (payload: UpdateOrderDetailStatusRequest) => {
+			await kdsApi.updateRestaurantOrderDetailStatus(payload);
+		},
+		onSuccess: async () => {
+			await queryClient.invalidateQueries({ queryKey: ["sales-order-details", normalizedOrderId] });
 		},
 	});
 
@@ -68,12 +86,16 @@ export const useOrderDetail = ({ restaurantOrderId, enabled }: UseOrderDetailPar
 		hasProductsError: productsQuery.isError,
 		isCreatingOrderDetail: createOrderDetailMutation.isPending,
 		isUpdatingOrderDetail: updateOrderDetailMutation.isPending,
+		isCancelingOrderDetail: cancelOrderDetailMutation.isPending,
 		createOrderDetail: async (payload: CreateOrderDetailRequest) => {
 			const response = await createOrderDetailMutation.mutateAsync(payload);
 			return extractOrderDetailId(response);
 		},
 		updateOrderDetail: async (payload: UpdateOrderDetailQuantityRequest) => {
 			await updateOrderDetailMutation.mutateAsync(payload);
+		},
+		cancelOrderDetail: async (payload: UpdateOrderDetailStatusRequest) => {
+			await cancelOrderDetailMutation.mutateAsync(payload);
 		},
 		refetchProducts: productsQuery.refetch,
 		orderDetails: orderDetailsQuery.data,
