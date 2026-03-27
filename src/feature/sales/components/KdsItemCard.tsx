@@ -1,6 +1,7 @@
 import { Badge } from "@/ui/badge";
 import { Button } from "@/ui/button";
 import { Card, CardContent } from "@/ui/card";
+import ResendCountBadge from "./ResendCountBadge";
 import { canAdvanceKdsStatus, getNextKdsStatus, getOrderDetailStatusLabel, OrderDetailStatus } from "../enums/kds";
 import type { KdsTeamItem } from "../types/kds";
 
@@ -50,6 +51,7 @@ export default function KdsItemCard({ item, onAdvanceStatus, isUpdatingStatus }:
 
 				<div className="flex flex-wrap gap-2">
 					<Badge variant="outline">Cant. {item.quantity}</Badge>
+					<ResendCountBadge resendCount={item.resendCount} />
 				</div>
 
 				<div className="rounded-lg border bg-muted/20 p-3">

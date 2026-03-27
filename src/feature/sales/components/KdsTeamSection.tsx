@@ -2,6 +2,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/ui/alert";
 import { Badge } from "@/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/ui/card";
 import { CircleAlert } from "lucide-react";
+import { useMemo } from "react";
 import { OrderDetailStatus } from "../enums/kds";
 import type { KdsTeam, KdsTeamItem } from "../types/kds";
 import KdsItemCard from "./KdsItemCard";
@@ -28,6 +29,19 @@ export default function KdsTeamSection({
 	const visibleItems = hideCanceledItems
 		? items.filter((item) => item.orderItemStatusId !== OrderDetailStatus.Canceled)
 		: items;
+
+	const sortedVisibleItems = useMemo(() => {
+		return [...visibleItems].sort((left, right) => {
+			const leftResendCount = Number.isFinite(left.resendCount) ? left.resendCount : 0;
+			const rightResendCount = Number.isFinite(right.resendCount) ? right.resendCount : 0;
+
+			if (rightResendCount !== leftResendCount) {
+				return rightResendCount - leftResendCount;
+			}
+
+			return left.restaurantOrderDetailId - right.restaurantOrderDetailId;
+		});
+	}, [visibleItems]);
 
 	return (
 		<Card className="gap-4">
@@ -65,9 +79,9 @@ export default function KdsTeamSection({
 					</div>
 				) : null}
 
-				{!hasItemsError && !isLoadingItems && visibleItems.length > 0 ? (
+				{!hasItemsError && !isLoadingItems && sortedVisibleItems.length > 0 ? (
 					<div className="space-y-3">
-						{visibleItems.map((item) => (
+						{sortedVisibleItems.map((item) => (
 							<KdsItemCard
 								key={`${item.restaurantOrderDetailId}-${item.productId}`}
 								item={item}
