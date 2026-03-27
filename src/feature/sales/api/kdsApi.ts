@@ -1,4 +1,5 @@
 import apiClient from "@/api/apiClient";
+import type { UpdateOrderDetailStatusRequest } from "../types/order-detail";
 import type { KdsTeam, KdsTeamItem } from "../types/kds";
 
 export enum SalesKdsApi {
@@ -17,7 +18,16 @@ const getTeamItems = (companyId: number, teamId: number) => {
 	});
 };
 
+const updateRestaurantOrderDetailStatus = (payload: UpdateOrderDetailStatusRequest) => {
+	return apiClient.request<void>({
+		url: `${SalesKdsApi.Kds}/restaurant-order-detail`,
+		method: "PATCH",
+		data: payload,
+	});
+};
+
 export default {
 	getTeamsByCompany,
 	getTeamItems,
+	updateRestaurantOrderDetailStatus,
 };
