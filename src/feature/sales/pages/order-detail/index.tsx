@@ -2,6 +2,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/ui/alert";
 import { Badge } from "@/ui/badge";
 import { Button } from "@/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/ui/card";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/ui/dialog";
 import { Title } from "@/ui/typography";
 import { fCurrency } from "@/utils/format-number";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -9,8 +10,10 @@ import { useLocation, useNavigate, useParams } from "react-router";
 import { toast } from "sonner";
 import { ArrowLeft, CircleAlert, Printer, ShoppingBasket } from "lucide-react";
 import { canCancelFromPos, getOrderDetailStatusLabel, OrderDetailStatus } from "../../enums/kds";
+import { canCancelOrder, getOrderStatusBadgeVariant, getOrderStatusLabel } from "../../enums/order";
 import OrderDetailItemCard from "../../components/OrderDetailItemCard";
 import ProductCatalogItemCard from "../../components/ProductCatalogItemCard";
+import { extractCancelOrderApiError, useCancelRestaurantOrder } from "../../hooks/use-cancel-restaurant-order";
 import { useOrderDetail } from "../../hooks/use-order-detail";
 import { useResendOrderDetail } from "../../hooks/use-resend-order-detail";
 import type {
@@ -61,6 +64,7 @@ export default function OrderDetailPage() {
 	const orderPdfQuery = useRestaurantOrderPdf({
 		restaurantOrderId: hasValidOrder ? restaurantOrderId : null,
 	});
+	const { cancelRestaurantOrder, isCancelingRestaurantOrder } = useCancelRestaurantOrder();
 
 	const taxQuery = useRestaurantOrder(restaurantOrderId);
 
@@ -71,7 +75,10 @@ export default function OrderDetailPage() {
 	const [pendingSaveNoteDetailIds, setPendingSaveNoteDetailIds] = useState<Set<number>>(new Set());
 	const [pendingCancelDetailIds, setPendingCancelDetailIds] = useState<Set<number>>(new Set());
 	const [pendingResendDetailIds, setPendingResendDetailIds] = useState<Set<number>>(new Set());
+	const [isCancelDialogOpen, setIsCancelDialogOpen] = useState(false);
 	const previousOrderIdRef = useRef<number | null>(null);
+	const orderStatusId = state?.restaurantOrder?.orderStatusId;
+	const allowCancelOrder = canCancelOrder(orderStatusId);
 
 	useEffect(() => {
 		if (previousOrderIdRef.current === restaurantOrderId) {
@@ -325,22 +332,19 @@ export default function OrderDetailPage() {
 	};
 
 	const handlePrintOrder = async () => {
-
 		try {
 			const { data: blob } = await orderPdfQuery.refetch();
 
-			if (!blob) 
-				return;
+			if (!blob) return;
 
 			const url = URL.createObjectURL(blob);
 
 			window.open(url, "_blank");
 			URL.revokeObjectURL(url);
+		} catch {
+			toast.error("Error en la reimpresion de la orden");
 		}
-		catch {
-			toast.error("Error en la reimpresion de la orden")
-		}
-	}
+	};
 
 	const updateItemQuantity = async (item: OrderItem, product: AvailableOrderProduct, delta: 1 | -1) => {
 		if (!item.restaurantOrderDetailId) {
@@ -500,6 +504,27 @@ export default function OrderDetailPage() {
 		}
 	};
 
+	const handleConfirmOrderCancellation = async () => {
+		if (!hasValidOrder) {
+			return;
+		}
+
+		try {
+			await cancelRestaurantOrder({ restaurantOrderId });
+			toast.success("Cuenta cancelada correctamente.");
+			setIsCancelDialogOpen(false);
+			navigate("/sales/orders");
+		} catch (error) {
+			const backendError = extractCancelOrderApiError(error);
+			if (backendError) {
+				toast.error(backendError);
+				return;
+			}
+
+			toast.error("No se pudo cancelar la cuenta. Intenta nuevamente.");
+		}
+	};
+
 	if (!hasValidOrder) {
 		return (
 			<Alert>
@@ -517,6 +542,9 @@ export default function OrderDetailPage() {
 					<div className="flex items-center gap-2">
 						<Badge variant="info">Punto de venta</Badge>
 						<Badge variant="outline">Detalle de orden</Badge>
+						{typeof orderStatusId === "number" ? (
+							<Badge variant={getOrderStatusBadgeVariant(orderStatusId)}>{getOrderStatusLabel(orderStatusId)}</Badge>
+						) : null}
 					</div>
 					<Title as="h1" className="mt-2">
 						Pedido #{state?.restaurantOrder?.dailyNumber ?? restaurantOrderId}
@@ -526,18 +554,23 @@ export default function OrderDetailPage() {
 					</p>
 				</div>
 
-				<div className="flex flex-col gap-8">
-	<				Button variant="outline" onClick={() => navigate("/sales/orders")}>
+				<div className="flex flex-col gap-2 lg:items-end">
+					<Button variant="outline" onClick={() => navigate("/sales/orders")} className="w-full">
 						<ArrowLeft className="size-4" />
 						Volver a tickets
 					</Button>
 
-					<Button variant="outline" size="sm" onClick={handlePrintOrder}>
+					<Button variant="outline" onClick={handlePrintOrder} className="w-full">
 						<Printer className="size-4" />
 						Reimprimir
 					</Button>
+
+					{allowCancelOrder ? (
+						<Button variant="destructive" onClick={() => setIsCancelDialogOpen(true)} className="w-full">
+							Cancelar cuenta
+						</Button>
+					) : null}
 				</div>
-				
 			</div>
 
 			{hasProductsError ? (
@@ -708,6 +741,31 @@ export default function OrderDetailPage() {
 					</CardContent>
 				</Card>
 			</div>
+
+			<Dialog open={isCancelDialogOpen} onOpenChange={setIsCancelDialogOpen}>
+				<DialogContent>
+					<DialogHeader>
+						<DialogTitle>Cancelar cuenta</DialogTitle>
+						<DialogDescription>Esta accion cancelara la cuenta y todos sus items. Deseas continuar?</DialogDescription>
+					</DialogHeader>
+					<DialogFooter>
+						<Button
+							variant="outline"
+							onClick={() => setIsCancelDialogOpen(false)}
+							disabled={isCancelingRestaurantOrder}
+						>
+							Cerrar
+						</Button>
+						<Button
+							variant="destructive"
+							onClick={() => void handleConfirmOrderCancellation()}
+							disabled={isCancelingRestaurantOrder}
+						>
+							{isCancelingRestaurantOrder ? "Cancelando..." : "Confirmar cancelacion"}
+						</Button>
+					</DialogFooter>
+				</DialogContent>
+			</Dialog>
 		</div>
 	);
 }

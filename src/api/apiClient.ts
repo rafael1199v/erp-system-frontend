@@ -21,11 +21,9 @@ axiosInstance.interceptors.request.use(
 axiosInstance.interceptors.response.use(
 	(res: AxiosResponse) => {
 		// if (!res.data) throw new Error(t("sys.api.apiRequestFailed"));
-		
-		if(res.status === 200 || res.status === 201)
-			return res;
-		else 
-			throw new Error(t("sys.api.apiRequestFailed"));
+
+		if (res.status === 200 || res.status === 201) return res;
+		else throw new Error(t("sys.api.apiRequestFailed"));
 
 		// const { status, data, message } = res.data;
 		// if (status === ResultStatus.SUCCESS) {
@@ -43,14 +41,18 @@ axiosInstance.interceptors.response.use(
 		// }
 		// return Promise.reject(error);
 		const { response, message } = error || {};
-		const errMsg = (response?.data as any)?.message || message ||t("sys.api.errorMessage");
+		const responseData = response?.data;
+		const errMsg =
+			typeof responseData === "string"
+				? responseData
+				: (responseData as { message?: string } | undefined)?.message || message || t("sys.api.errorMessage");
 		console.log(errMsg);
 		toast.error(errMsg, { position: "top-center" });
-		
+
 		if (response?.status === 401) {
 			userStore.getState().actions.clearUserInfoAndToken();
 		}
-		
+
 		return Promise.reject(error);
 	},
 );

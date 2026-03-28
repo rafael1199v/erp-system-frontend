@@ -2,12 +2,16 @@ import { Alert, AlertDescription, AlertTitle } from "@/ui/alert";
 import { Badge } from "@/ui/badge";
 import { Button } from "@/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/ui/card";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/ui/dialog";
 import { Title } from "@/ui/typography";
 import { useSelectedCompanyId } from "@/store/companyStore";
 import { CircleAlert, Plus, ReceiptText, UsersRound } from "lucide-react";
+import { useMemo, useState } from "react";
 import { useNavigate } from "react-router";
 import { toast } from "sonner";
 import PosTicketCard from "../../components/PosTicketCard";
+import { canCancelOrder, isOrderOpen } from "../../enums/order";
+import { extractCancelOrderApiError, useCancelRestaurantOrder } from "../../hooks/use-cancel-restaurant-order";
 import { useRestaurantOrders } from "../../hooks/use-pos-tickets";
 import { useWaiters } from "../../hooks/use-waiters";
 import type { RestaurantOrder } from "../../types/order";
@@ -21,7 +25,13 @@ export default function OrderPage() {
 	const { orders, createRestaurantOrder, isCreatingRestaurantOrder, assignWaiter } = useRestaurantOrders(
 		hasValidCompany ? companyId : null,
 	);
+	const { cancelRestaurantOrder, isCancelingRestaurantOrder } = useCancelRestaurantOrder();
 	const waitersQuery = useWaiters(hasValidCompany ? companyId : null);
+	const [targetOrderToCancel, setTargetOrderToCancel] = useState<RestaurantOrder | null>(null);
+
+	const openOrdersCount = useMemo(() => {
+		return orders.filter((order) => isOrderOpen(order.orderStatusId)).length;
+	}, [orders]);
 
 	const handleCreateOrder = async () => {
 		if (!hasValidCompany) {
@@ -46,6 +56,11 @@ export default function OrderPage() {
 	};
 
 	const handleContinueToCheckout = (restaurantOrder: RestaurantOrder) => {
+		if (!isOrderOpen(restaurantOrder.orderStatusId)) {
+			toast.error("Solo se puede cobrar una cuenta abierta.");
+			return;
+		}
+
 		if (!restaurantOrder.waiterId) {
 			toast.error("Debes asignar un mesero antes de continuar a cobro.");
 			return;
@@ -57,9 +72,35 @@ export default function OrderPage() {
 	};
 
 	const handleTakeOrder = (restaurantOrder: RestaurantOrder) => {
+		if (!isOrderOpen(restaurantOrder.orderStatusId)) {
+			toast.error("Solo se puede gestionar una cuenta abierta.");
+			return;
+		}
+
 		navigate(`/sales/orders/${restaurantOrder.restaurantOrderId}`, {
 			state: { restaurantOrder },
 		});
+	};
+
+	const handleConfirmCancelOrder = async () => {
+		if (!targetOrderToCancel) {
+			return;
+		}
+
+		try {
+			await cancelRestaurantOrder({ restaurantOrderId: targetOrderToCancel.restaurantOrderId });
+			toast.success("Cuenta cancelada correctamente.");
+			setTargetOrderToCancel(null);
+		} catch (error) {
+			const backendError = extractCancelOrderApiError(error);
+			if (backendError) {
+				toast.error(backendError);
+				setTargetOrderToCancel(null);
+				return;
+			}
+
+			toast.error("No se pudo cancelar la cuenta. Intenta nuevamente.");
+		}
 	};
 
 	return (
@@ -103,7 +144,7 @@ export default function OrderPage() {
 						<CardDescription>Cuentas abiertas</CardDescription>
 						<CardTitle className="flex items-center gap-2 text-3xl">
 							<ReceiptText className="size-6 text-primary" />
-							<span>{orders.length}</span>
+							<span>{openOrdersCount}</span>
 						</CardTitle>
 					</CardHeader>
 				</Card>
@@ -154,12 +195,56 @@ export default function OrderPage() {
 									onAssignWaiter={handleAssignWaiter}
 									onTakeOrder={handleTakeOrder}
 									onContinueToCheckout={handleContinueToCheckout}
+									onCancelOrder={(order) => {
+										if (!canCancelOrder(order.orderStatusId)) {
+											toast.error("Solo se puede cancelar una cuenta abierta.");
+											return;
+										}
+
+										setTargetOrderToCancel(order);
+									}}
+									isCancelingOrder={
+										isCancelingRestaurantOrder &&
+										targetOrderToCancel?.restaurantOrderId === restaurantOrder.restaurantOrderId
+									}
 								/>
 							))}
 						</div>
 					)}
 				</CardContent>
 			</Card>
+
+			<Dialog
+				open={targetOrderToCancel !== null}
+				onOpenChange={(isOpen) => {
+					if (!isOpen) {
+						setTargetOrderToCancel(null);
+					}
+				}}
+			>
+				<DialogContent>
+					<DialogHeader>
+						<DialogTitle>Cancelar cuenta</DialogTitle>
+						<DialogDescription>Esta accion cancelara la cuenta y todos sus items. Deseas continuar?</DialogDescription>
+					</DialogHeader>
+					<DialogFooter>
+						<Button
+							variant="outline"
+							onClick={() => setTargetOrderToCancel(null)}
+							disabled={isCancelingRestaurantOrder}
+						>
+							Cerrar
+						</Button>
+						<Button
+							variant="destructive"
+							onClick={() => void handleConfirmCancelOrder()}
+							disabled={isCancelingRestaurantOrder}
+						>
+							{isCancelingRestaurantOrder ? "Cancelando..." : "Confirmar cancelacion"}
+						</Button>
+					</DialogFooter>
+				</DialogContent>
+			</Dialog>
 		</div>
 	);
 }

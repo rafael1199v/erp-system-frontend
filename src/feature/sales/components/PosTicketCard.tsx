@@ -6,7 +6,7 @@ import { Text } from "@/ui/typography";
 import { format } from "date-fns";
 import { Clock3, Ticket, UserRound } from "lucide-react";
 import type { Waiter, RestaurantOrder } from "../types/order";
-import { OrderStatus } from "../enums/order";
+import { canCancelOrder, getOrderStatusBadgeVariant, getOrderStatusLabel, isOrderOpen } from "../enums/order";
 
 type PosTicketCardProps = {
 	restaurantOrder: RestaurantOrder;
@@ -15,6 +15,8 @@ type PosTicketCardProps = {
 	onAssignWaiter: (orderId: number, waiterId: number | null) => void;
 	onTakeOrder: (order: RestaurantOrder) => void;
 	onContinueToCheckout: (order: RestaurantOrder) => void;
+	onCancelOrder: (order: RestaurantOrder) => void;
+	isCancelingOrder: boolean;
 };
 
 export default function PosTicketCard({
@@ -24,8 +26,12 @@ export default function PosTicketCard({
 	onAssignWaiter,
 	onTakeOrder,
 	onContinueToCheckout,
+	onCancelOrder,
+	isCancelingOrder,
 }: PosTicketCardProps) {
 	const assignedWaiter = waiters.find((waiter) => waiter.id === restaurantOrder.waiterId);
+	const orderIsOpen = isOrderOpen(restaurantOrder.orderStatusId);
+	const allowCancel = canCancelOrder(restaurantOrder.orderStatusId);
 
 	return (
 		<Card className="gap-4 border-dashed bg-background/80">
@@ -38,7 +44,9 @@ export default function PosTicketCard({
 						</CardTitle>
 						<CardDescription>Cuenta abierta lista para registrar pedidos antes de cobrar.</CardDescription>
 					</div>
-					<Badge variant="success">{restaurantOrder.orderStatusId === OrderStatus.Open ? "Abierto" : "Cerrado"}</Badge>
+					<Badge variant={getOrderStatusBadgeVariant(restaurantOrder.orderStatusId)}>
+						{getOrderStatusLabel(restaurantOrder.orderStatusId)}
+					</Badge>
 				</div>
 			</CardHeader>
 
@@ -68,7 +76,7 @@ export default function PosTicketCard({
 					<Select
 						value={restaurantOrder.waiterId ? String(restaurantOrder.waiterId) : undefined}
 						onValueChange={(value) => onAssignWaiter(restaurantOrder.restaurantOrderId, Number(value))}
-						disabled={isLoadingWaiters || waiters.length === 0}
+						disabled={isLoadingWaiters || waiters.length === 0 || !orderIsOpen}
 					>
 						<SelectTrigger className="w-full">
 							<SelectValue placeholder={isLoadingWaiters ? "Cargando meseros..." : "Seleccionar mesero"} />
@@ -85,18 +93,15 @@ export default function PosTicketCard({
 			</CardContent>
 
 			<CardFooter className="justify-end gap-2">
-				<Button
-					variant="secondary"
-					disabled={restaurantOrder.orderStatusId !== OrderStatus.Open}
-					onClick={() => onTakeOrder(restaurantOrder)}
-				>
+				{allowCancel ? (
+					<Button variant="destructive" onClick={() => onCancelOrder(restaurantOrder)} disabled={isCancelingOrder}>
+						{isCancelingOrder ? "Cancelando..." : "Cancelar"}
+					</Button>
+				) : null}
+				<Button variant="secondary" disabled={!orderIsOpen} onClick={() => onTakeOrder(restaurantOrder)}>
 					Tomar pedido
 				</Button>
-				<Button
-					variant="outline"
-					disabled={restaurantOrder.orderStatusId !== OrderStatus.Open}
-					onClick={() => onContinueToCheckout(restaurantOrder)}
-				>
+				<Button variant="outline" disabled={!orderIsOpen} onClick={() => onContinueToCheckout(restaurantOrder)}>
 					Continuar a cobro
 				</Button>
 			</CardFooter>

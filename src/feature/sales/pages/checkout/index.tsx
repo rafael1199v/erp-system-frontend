@@ -6,6 +6,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/ui/table";
 import { Title } from "@/ui/typography";
+import { useSelectedCompanyId } from "@/store/companyStore";
 import { fCurrency } from "@/utils/format-number";
 import { useQuery } from "@tanstack/react-query";
 import { ArrowLeft, CircleAlert, CreditCard } from "lucide-react";
@@ -13,7 +14,9 @@ import { useMemo, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router";
 import { toast } from "sonner";
 import orderApi from "../../api/orderApi";
+import { getOrderStatusLabel, isOrderOpen } from "../../enums/order";
 import { extractProcessPaymentApiError, useProcessPayment } from "../../hooks/use-process-payment";
+import { useRestaurantOrders } from "../../hooks/use-pos-tickets";
 import { usePaymentMethods } from "../../hooks/use-payment-methods";
 import type { RestaurantOrder } from "../../types/order";
 import type { StockInsufficiencyResponseDto } from "../../types/payment";
@@ -29,10 +32,18 @@ export default function CheckoutPage() {
 	const params = useParams<{ restaurantOrderId: string }>();
 	const restaurantOrderId = Number.parseInt(params.restaurantOrderId ?? "", 10);
 	const hasValidOrder = Number.isInteger(restaurantOrderId) && restaurantOrderId > 0;
+	const selectedCompanyId = useSelectedCompanyId();
+	const companyId = Number.parseInt(selectedCompanyId ?? "", 10);
+	const hasValidCompany = Number.isInteger(companyId) && companyId > 0;
 
 	const [selectedPaymentTypeId, setSelectedPaymentTypeId] = useState<number | null>(null);
 	const [insufficiencies, setInsufficiencies] = useState<StockInsufficiencyResponseDto[]>([]);
 	const [isInsufficiencyDialogOpen, setIsInsufficiencyDialogOpen] = useState(false);
+	const { orders } = useRestaurantOrders(hasValidCompany ? companyId : null);
+
+	const orderFromList = orders.find((order) => order.restaurantOrderId === restaurantOrderId);
+	const orderStatusId = orderFromList?.orderStatusId ?? state?.restaurantOrder?.orderStatusId;
+	const orderIsOpen = isOrderOpen(orderStatusId);
 
 	const orderDetailsQuery = useQuery({
 		queryKey: ["sales-order-details", restaurantOrderId],
@@ -56,18 +67,24 @@ export default function CheckoutPage() {
 	const { processPayment, isProcessingPayment } = useProcessPayment();
 
 	const subtotal = useMemo(() => {
-
-		return (orderDetailsQuery.data ?? []).filter(orderDetail => orderDetail.restaurantOrderStatusId !== OrderDetailStatus.Canceled).reduce((sum, item) => sum + item.quantity * item.unitPrice, 0);
+		return (orderDetailsQuery.data ?? [])
+			.filter((orderDetail) => orderDetail.restaurantOrderStatusId !== OrderDetailStatus.Canceled)
+			.reduce((sum, item) => sum + item.quantity * item.unitPrice, 0);
 	}, [orderDetailsQuery.data]);
 
 	const taxRate = orderTaxQuery.data ?? 0;
 	const taxAmount = subtotal * (taxRate / 100);
 	const total = subtotal + taxAmount;
 
-	const canProcessPayment = hasValidOrder && selectedPaymentTypeId !== null && !isProcessingPayment;
+	const canProcessPayment = hasValidOrder && orderIsOpen && selectedPaymentTypeId !== null && !isProcessingPayment;
 
 	const handleProcessPayment = async () => {
 		if (!hasValidOrder || selectedPaymentTypeId === null) {
+			return;
+		}
+
+		if (!orderIsOpen) {
+			toast.error("Solo se puede cobrar una cuenta abierta.");
 			return;
 		}
 
@@ -148,6 +165,16 @@ export default function CheckoutPage() {
 						</CardDescription>
 					</CardHeader>
 					<CardContent className="space-y-4">
+						{typeof orderStatusId === "number" && !orderIsOpen ? (
+							<Alert>
+								<CircleAlert className="size-4" />
+								<AlertTitle>Cuenta no disponible para cobro</AlertTitle>
+								<AlertDescription>
+									Estado actual: {getOrderStatusLabel(orderStatusId)}. Solo las cuentas abiertas pueden cobrarse.
+								</AlertDescription>
+							</Alert>
+						) : null}
+
 						{isErrorPaymentMethods ? (
 							<Alert>
 								<CircleAlert className="size-4" />

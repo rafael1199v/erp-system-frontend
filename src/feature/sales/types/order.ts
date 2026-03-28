@@ -1,4 +1,3 @@
-
 export type CreateOrderRequest = {
 	companyId: number;
 };
@@ -19,9 +18,15 @@ export type RestaurantOrder = {
 };
 
 export type AssignWaiter = {
-	restaurantOrderId: number,
-	waiterId: number
-}
+	restaurantOrderId: number;
+	waiterId: number;
+};
+
+export type CancelRestaurantOrderDto = {
+	restaurantOrderId: number;
+};
+
+export type BackendStringError = string;
 
 export type Waiter = {
 	id: number;
