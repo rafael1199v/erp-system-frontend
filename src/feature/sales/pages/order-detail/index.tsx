@@ -2,16 +2,15 @@ import { Alert, AlertDescription, AlertTitle } from "@/ui/alert";
 import { Badge } from "@/ui/badge";
 import { Button } from "@/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/ui/card";
-import { Input } from "@/ui/input";
-import { Textarea } from "@/ui/textarea";
 import { Title } from "@/ui/typography";
 import { fCurrency } from "@/utils/format-number";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router";
 import { toast } from "sonner";
-import { ArrowLeft, CircleAlert, Minus, Plus, RotateCcw, ShoppingBasket } from "lucide-react";
+import { ArrowLeft, CircleAlert, Printer, ShoppingBasket } from "lucide-react";
 import { canCancelFromPos, getOrderDetailStatusLabel, OrderDetailStatus } from "../../enums/kds";
-import ResendCountBadge from "../../components/ResendCountBadge";
+import OrderDetailItemCard from "../../components/OrderDetailItemCard";
+import ProductCatalogItemCard from "../../components/ProductCatalogItemCard";
 import { useOrderDetail } from "../../hooks/use-order-detail";
 import { useResendOrderDetail } from "../../hooks/use-resend-order-detail";
 import type {
@@ -21,6 +20,7 @@ import type {
 	ProductDraftQuantity,
 } from "../../types/order-detail";
 import { useRestaurantOrder } from "../../hooks/use-restaurant-order";
+import { useRestaurantOrderPdf } from "../../hooks/use-restaurant-order-pdf";
 
 const getOrderItemStatusId = (item: OrderItem) => {
 	return item.restaurantOrderStatusId;
@@ -55,6 +55,10 @@ export default function OrderDetailPage() {
 	});
 
 	const { resendOrderDetail, isResendingOrderDetail } = useResendOrderDetail({
+		restaurantOrderId: hasValidOrder ? restaurantOrderId : null,
+	});
+
+	const orderPdfQuery = useRestaurantOrderPdf({
 		restaurantOrderId: hasValidOrder ? restaurantOrderId : null,
 	});
 
@@ -320,6 +324,24 @@ export default function OrderDetailPage() {
 		}
 	};
 
+	const handlePrintOrder = async () => {
+
+		try {
+			const { data: blob } = await orderPdfQuery.refetch();
+
+			if (!blob) 
+				return;
+
+			const url = URL.createObjectURL(blob);
+
+			window.open(url, "_blank");
+			URL.revokeObjectURL(url);
+		}
+		catch {
+			toast.error("Error en la reimpresion de la orden")
+		}
+	}
+
 	const updateItemQuantity = async (item: OrderItem, product: AvailableOrderProduct, delta: 1 | -1) => {
 		if (!item.restaurantOrderDetailId) {
 			return;
@@ -503,10 +525,19 @@ export default function OrderDetailPage() {
 						Gestiona productos, cantidades y notas de cocina en tiempo real.
 					</p>
 				</div>
-				<Button variant="outline" onClick={() => navigate("/sales/orders")}>
-					<ArrowLeft className="size-4" />
-					Volver a tickets
-				</Button>
+
+				<div className="flex flex-col gap-8">
+	<				Button variant="outline" onClick={() => navigate("/sales/orders")}>
+						<ArrowLeft className="size-4" />
+						Volver a tickets
+					</Button>
+
+					<Button variant="outline" size="sm" onClick={handlePrintOrder}>
+						<Printer className="size-4" />
+						Reimprimir
+					</Button>
+				</div>
+				
 			</div>
 
 			{hasProductsError ? (
@@ -541,147 +572,66 @@ export default function OrderDetailPage() {
 									{itemsList.map((item) => {
 										const product = products.find((candidate) => candidate.productId === item.productId);
 										const itemSubtotal = item.quantity * item.unitPrice;
+										const detailId = item.restaurantOrderDetailId;
 
 										return (
-											<div key={item.restaurantOrderDetailId} className="space-y-3 rounded-xl border bg-muted/10 p-4">
-												<div className="flex flex-wrap items-center justify-between gap-2">
-													<div>
-														<p className="font-medium text-text-primary">{item.name}</p>
-														<p className="text-sm text-muted-foreground">
-															{item.sentAt
-																? `Enviado a las ${new Date(item.sentAt).toLocaleTimeString()}`
-																: "Sin enviar"}
-														</p>
-														<p className="text-sm text-muted-foreground">
-															Precio unitario: {fCurrency(item.unitPrice)}
-														</p>
-													</div>
-													<p className="text-sm font-semibold text-text-primary">Subtotal: {fCurrency(itemSubtotal)}</p>
-												</div>
+											<OrderDetailItemCard
+												key={item.restaurantOrderDetailId}
+												item={item}
+												product={product}
+												statusLabel={getOrderDetailStatusLabel(
+													item.restaurantOrderStatusId,
+													item.restaurantOrderStatus,
+												)}
+												itemSubtotal={itemSubtotal}
+												isEditable={isEditableOrderItem(item)}
+												canCancel={canCancelFromPos(getOrderItemStatusId(item))}
+												canResend={canResendOrderItem(item)}
+												isUpdatingOrderDetail={isUpdatingOrderDetail}
+												isCancelingOrderDetail={isCancelingOrderDetail}
+												isResendingOrderDetail={isResendingOrderDetail}
+												isCancelPending={detailId ? pendingCancelDetailIds.has(detailId) : false}
+												isResendPending={detailId ? pendingResendDetailIds.has(detailId) : false}
+												isSaveNotePending={detailId ? pendingSaveNoteDetailIds.has(detailId) : false}
+												onDecreaseQuantity={() => {
+													if (product) {
+														void updateItemQuantity(item, product, -1);
+													}
+												}}
+												onIncreaseQuantity={() => {
+													if (product) {
+														void updateItemQuantity(item, product, 1);
+													}
+												}}
+												onCancelItem={() => {
+													if (!detailId) {
+														return;
+													}
 
-												<div className="flex flex-wrap items-center gap-2">
-														<Badge variant="outline">
-															{getOrderDetailStatusLabel(item.restaurantOrderStatusId, item.restaurantOrderStatus)}
-														</Badge>
-														<ResendCountBadge resendCount={item.resendCount} />
-													<Button
-														variant="outline"
-														size="icon"
-														disabled={
-															!product || !isEditableOrderItem(item) || isUpdatingOrderDetail || isCancelingOrderDetail
-														}
-														onClick={() => {
-															if (product) {
-																void updateItemQuantity(item, product, -1);
-															}
-														}}
-													>
-														<Minus className="size-4" />
-													</Button>
-													<div className="min-w-16 rounded-md border bg-background px-3 py-1 text-center text-sm font-semibold">
-														{item.quantity}
-													</div>
-													<Button
-														variant="outline"
-														size="icon"
-														disabled={
-															!product || !isEditableOrderItem(item) || isUpdatingOrderDetail || isCancelingOrderDetail
-														}
-														onClick={() => {
-															if (product) {
-																void updateItemQuantity(item, product, 1);
-															}
-														}}
-													>
-														<Plus className="size-4" />
-													</Button>
-													<Button
-														variant="destructive"
-														size="sm"
-														disabled={
-															!item.restaurantOrderDetailId ||
-															!canCancelFromPos(getOrderItemStatusId(item)) ||
-															isUpdatingOrderDetail ||
-															isCancelingOrderDetail
-														}
-														onClick={() => {
-															if (!item.restaurantOrderDetailId) {
-																return;
-															}
+													void handleCancelItem(detailId);
+												}}
+												onResendItem={() => {
+													if (!detailId) {
+														return;
+													}
 
-															void handleCancelItem(item.restaurantOrderDetailId);
-														}}
-													>
-														{item.restaurantOrderDetailId && pendingCancelDetailIds.has(item.restaurantOrderDetailId)
-															? "Cancelando..."
-															: "Cancelar item"}
-													</Button>
-														<Button
-															variant="secondary"
-															size="sm"
-															disabled={
-																!item.restaurantOrderDetailId ||
-																!canResendOrderItem(item) ||
-																isResendingOrderDetail ||
-																pendingResendDetailIds.has(item.restaurantOrderDetailId)
-															}
-															onClick={() => {
-																if (!item.restaurantOrderDetailId) {
-																	return;
-																}
+													void handleResendItem(detailId);
+												}}
+												onNoteChange={(note) => {
+													if (!detailId) {
+														return;
+													}
 
-																void handleResendItem(item.restaurantOrderDetailId);
-															}}
-														>
-															<RotateCcw className="size-4" />
-															{item.restaurantOrderDetailId && pendingResendDetailIds.has(item.restaurantOrderDetailId)
-																? "Reenviando..."
-																: "Reenviar"}
-														</Button>
-												</div>
+													handleNoteChange(detailId, note);
+												}}
+												onSaveNote={() => {
+													if (!detailId) {
+														return;
+													}
 
-												<div className="space-y-2">
-													<Textarea
-														value={item.note ?? ""}
-														onChange={(event) => {
-															if (!item.restaurantOrderDetailId) {
-																return;
-															}
-
-															handleNoteChange(item.restaurantOrderDetailId, event.target.value);
-														}}
-														placeholder="Notas para cocina (opcional)"
-														rows={2}
-														disabled={!isEditableOrderItem(item)}
-													/>
-													<div className="flex justify-end">
-														<Button
-															variant="secondary"
-															size="sm"
-															disabled={
-																!item.restaurantOrderDetailId ||
-																!isEditableOrderItem(item) ||
-																(item.restaurantOrderDetailId
-																	? pendingSaveNoteDetailIds.has(item.restaurantOrderDetailId)
-																	: false) ||
-																isCancelingOrderDetail
-															}
-															onClick={() => {
-																if (!item.restaurantOrderDetailId) {
-																	return;
-																}
-
-																void handleSaveNote(item.restaurantOrderDetailId);
-															}}
-														>
-															{item.restaurantOrderDetailId &&
-															pendingSaveNoteDetailIds.has(item.restaurantOrderDetailId)
-																? "Guardando..."
-																: "Guardar nota"}
-														</Button>
-													</div>
-												</div>
-											</div>
+													void handleSaveNote(detailId);
+												}}
+											/>
 										);
 									})}
 								</div>
@@ -725,10 +675,6 @@ export default function OrderDetailPage() {
 							) : null}
 						</CardContent>
 					</Card>
-					{/* <Button variant="outline" size="sm" onClick={() => handleReprintItem(item.name)}>
-						<Printer className="size-4" />
-						Reimprimir
-					</Button> */}
 				</div>
 
 				<Card>
@@ -744,45 +690,19 @@ export default function OrderDetailPage() {
 							<p className="text-sm text-muted-foreground">Cargando catalogo...</p>
 						) : null}
 						{sortedProducts.map((product) => {
-							const isUnavailable =
-								!product.isAvailable || product.availableStock <= 0 || product.productStatus !== "Available";
-
 							return (
-								<div key={product.productId} className="space-y-3 rounded-xl border bg-muted/10 p-4">
-									<div className="flex items-start justify-between gap-2">
-										<div>
-											<p className="font-medium text-text-primary">{product.name}</p>
-											<p className="text-sm text-muted-foreground">Precio: {fCurrency(product.sellPrice)}</p>
-										</div>
-										<div className="flex flex-col items-end gap-2">
-											<Badge variant={isUnavailable ? "destructive" : "success"}>
-												{isUnavailable ? "No disponible" : "Disponible"}
-											</Badge>
-											<span className="text-xs text-muted-foreground">Stock: {product.availableStock}</span>
-										</div>
-									</div>
-
-									<div className="flex items-center gap-2">
-										<Input
-											type="number"
-											min={1}
-											value={getDraftQuantity(product.productId)}
-											onChange={(event) => {
-												setDraftQuantity(product.productId, Number(event.target.value));
-											}}
-											className="w-24"
-										/>
-										<Button
-											className="flex-1"
-											disabled={pendingAddProductIds.has(product.productId)}
-											onClick={() => {
-												void handleAddProduct(product);
-											}}
-										>
-											{pendingAddProductIds.has(product.productId) ? "Agregando..." : "Agregar al pedido"}
-										</Button>
-									</div>
-								</div>
+								<ProductCatalogItemCard
+									key={product.productId}
+									product={product}
+									draftQuantity={getDraftQuantity(product.productId)}
+									isAddPending={pendingAddProductIds.has(product.productId)}
+									onDraftQuantityChange={(value) => {
+										setDraftQuantity(product.productId, value);
+									}}
+									onAddProduct={() => {
+										void handleAddProduct(product);
+									}}
+								/>
 							);
 						})}
 					</CardContent>
