@@ -51,12 +51,9 @@ export default function OrderPage() {
 			return;
 		}
 
-		const assignedWaiter = waitersQuery.data?.find((waiter) => waiter.id === restaurantOrder.waiterId);
-		toast.success(
-			assignedWaiter
-				? `Ticket #${restaurantOrder.dailyNumber} listo para cobro con ${assignedWaiter.name}.`
-				: `Ticket #${restaurantOrder.dailyNumber} listo para cobro.`,
-		);
+		navigate(`/sales/orders/${restaurantOrder.restaurantOrderId}/checkout`, {
+			state: { restaurantOrder },
+		});
 	};
 
 	const handleTakeOrder = (restaurantOrder: RestaurantOrder) => {
@@ -133,7 +130,8 @@ export default function OrderPage() {
 				<CardHeader className="gap-2">
 					<CardTitle>Lista de cuentas abiertas</CardTitle>
 					<CardDescription>
-						Esta es tu lista de tickets abiertos, por lo que asegurate de tener un mesero disponible para ir continuar con el cobro.
+						Esta es tu lista de tickets abiertos, por lo que asegurate de tener un mesero disponible para ir continuar
+						con el cobro.
 					</CardDescription>
 				</CardHeader>
 
