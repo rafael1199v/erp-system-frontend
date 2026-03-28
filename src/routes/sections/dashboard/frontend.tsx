@@ -7,11 +7,12 @@ import OrderDetailPage from "@/feature/sales/pages/order-detail";
 import CheckoutPage from "@/feature/sales/pages/checkout";
 import TaxPage from "@/feature/sales/pages/tax";
 import KdsPage from "@/feature/sales/pages/kds";
+import DashboardAnalysisPage from "@/feature/dashboard/pages/analysis";
 
 export function getFrontendDashboardRoutes(): RouteObject[] {
 	const frontendDashboardRoutes: RouteObject[] = [
 		//{ path: "workbench", element: Component("/pages/dashboard/workbench") },
-		{ path: "analysis", element: Component("/pages/dashboard/analysis") },
+		{ path: "analysis", element: <DashboardAnalysisPage /> },
 		{ path: "products", element: Component("/pages/product") },
 		{ path: "products/form", element: Component("/pages/product/form") },
 		{ path: "products/form/:id", element: Component("/pages/product/form") },

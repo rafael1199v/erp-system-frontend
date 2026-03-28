@@ -10,7 +10,7 @@ import { cn } from "@/utils";
 import { useEffect, useState } from "react";
 import companyService from "@/api/services/companyService";
 import { useSelectedCompanyId } from "@/store/companyStore";
-import { ProductStock } from "@/types/productStock";
+import type { ProductStock } from "@/types/product";
 import { AlertInv } from "@/components/alert-inv";
 
 // ---------------------- 数据区 ----------------------
@@ -207,7 +207,7 @@ export default function Analysis() {
 		}
 
 		fecthProductStock();
-	}, []);
+	}, [companyId]);
 
 	
 
