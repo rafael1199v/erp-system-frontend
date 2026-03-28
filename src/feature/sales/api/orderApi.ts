@@ -45,11 +45,19 @@ const getOrderTax = (restaurantOrderId: number) => {
 	});
 }
 
+const getOrderPdf = (restaurantOrderId: number) => {
+	return apiClient.get<Blob>({
+        url: `${SalesOrderApi.Order}/${restaurantOrderId}/print`,
+        responseType: "blob"
+    });
+}
+
 export default {
 	createOrder,
 	getDailyOrders,
 	assignWaiter,
 	getOrderDetails,
 	sendOrderToTeams,
-	getOrderTax
+	getOrderTax,
+	getOrderPdf
 };
