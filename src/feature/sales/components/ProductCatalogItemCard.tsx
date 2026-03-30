@@ -46,7 +46,7 @@ export default function ProductCatalogItemCard({
 					}}
 					className="w-24"
 				/>
-				<Button className="flex-1" disabled={isAddPending} onClick={onAddProduct}>
+				<Button className="flex-1" variant="contrast" disabled={isAddPending} onClick={onAddProduct}>
 					{isAddPending ? "Agregando..." : "Agregar al pedido"}
 				</Button>
 			</div>
