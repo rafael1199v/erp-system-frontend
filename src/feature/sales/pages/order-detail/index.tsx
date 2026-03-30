@@ -583,7 +583,7 @@ export default function OrderDetailPage() {
 				</Alert>
 			) : null}
 
-			<div className="grid gap-5 lg:grid-cols-[1.15fr_1fr]">
+			<div className="grid gap-5 lg:grid-cols-[1.3fr_1fr]">
 				<div className="space-y-5">
 					<Card>
 						<CardHeader>

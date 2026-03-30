@@ -64,7 +64,6 @@ export default function OrderDetailItemCard({
 
 			<div className="flex flex-wrap items-center gap-2">
 				<Badge variant="outline">{statusLabel}</Badge>
-				<ResendCountBadge resendCount={item.resendCount} />
 				<Button
 					variant="outline"
 					size="icon"
@@ -101,6 +100,10 @@ export default function OrderDetailItemCard({
 					<RotateCcw className="size-4" />
 					{isResendPending ? "Reenviando..." : "Reenviar"}
 				</Button>
+			</div>
+
+			<div>
+				<ResendCountBadge resendCount={item.resendCount} />
 			</div>
 
 			<div className="space-y-2">

@@ -14,7 +14,7 @@ export default function KdsPage() {
 	const selectedCompanyId = useSelectedCompanyId();
 	const companyId = Number.parseInt(selectedCompanyId ?? "", 10);
 	const hasValidCompany = Number.isInteger(companyId) && companyId > 0;
-	const [hideCanceledItems, setHideCanceledItems] = useState(true);
+	const [hideFinishedItems, setHideFinishedItems] = useState(true);
 
 	const {
 		teams,
@@ -64,10 +64,10 @@ export default function KdsPage() {
 				<div className="flex flex-wrap items-center gap-2">
 					<Button
 						variant="outline"
-						onClick={() => setHideCanceledItems((previous) => !previous)}
+						onClick={() => setHideFinishedItems((previous) => !previous)}
 						disabled={!hasValidCompany}
 					>
-						{hideCanceledItems ? "Mostrar cancelados" : "Ocultar cancelados"}
+						{hideFinishedItems ? "Mostrar cancelados y listos" : "Ocultar cancelados y listos"}
 					</Button>
 					<Button onClick={() => void handleRefresh()} disabled={!hasValidCompany || isRefreshingAll}>
 						<RefreshCw className="size-4" />
@@ -122,7 +122,7 @@ export default function KdsPage() {
 							items={itemsByTeamId[team.id] ?? []}
 							isLoadingItems={isLoadingItemsByTeamId[team.id] ?? false}
 							hasItemsError={hasItemsErrorByTeamId[team.id] ?? false}
-							hideCanceledItems={hideCanceledItems}
+							hideFinishedItems={hideFinishedItems}
 							isUpdatingStatus={isUpdatingItemStatus}
 							onAdvanceStatus={handleAdvanceStatus}
 						/>

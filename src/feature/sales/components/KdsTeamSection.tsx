@@ -12,7 +12,7 @@ type KdsTeamSectionProps = {
 	items: KdsTeamItem[];
 	isLoadingItems: boolean;
 	hasItemsError: boolean;
-	hideCanceledItems: boolean;
+	hideFinishedItems: boolean;
 	isUpdatingStatus: boolean;
 	onAdvanceStatus: (restaurantOrderDetailId: number, nextStatusId: number) => Promise<void>;
 };
@@ -22,12 +22,12 @@ export default function KdsTeamSection({
 	items,
 	isLoadingItems,
 	hasItemsError,
-	hideCanceledItems,
+	hideFinishedItems,
 	isUpdatingStatus,
 	onAdvanceStatus,
 }: KdsTeamSectionProps) {
-	const visibleItems = hideCanceledItems
-		? items.filter((item) => item.orderItemStatusId !== OrderDetailStatus.Canceled)
+	const visibleItems = hideFinishedItems
+		? items.filter((item) => item.orderItemStatusId !== OrderDetailStatus.Canceled && item.orderItemStatusId !== OrderDetailStatus.Delivered)
 		: items;
 
 	const sortedVisibleItems = useMemo(() => {
@@ -53,7 +53,7 @@ export default function KdsTeamSection({
 					</div>
 					<div className="flex flex-wrap items-center gap-2">
 						<Badge variant="outline">{items.length} items</Badge>
-						{hideCanceledItems ? <Badge variant="secondary">Ocultando cancelados</Badge> : null}
+						{hideFinishedItems ? <Badge variant="secondary">Ocultando cancelados</Badge> : null}
 					</div>
 				</div>
 			</CardHeader>
