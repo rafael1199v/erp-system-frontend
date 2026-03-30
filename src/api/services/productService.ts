@@ -3,8 +3,8 @@ import apiClient from "../apiClient";
 import type { CreateProduct, Product, ProductCatalog, ProductWithWarehouses, UpdateProduct } from "@/types/product";
 
 export enum ProductApi {
-  Company = "/company",
-  Product = "/product"
+  Company = "/inventory/company",
+  Product = "/inventory/product"
 }
 
 const getProductCatalog = (companyId: string) => {

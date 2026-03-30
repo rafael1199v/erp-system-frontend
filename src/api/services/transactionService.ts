@@ -2,7 +2,7 @@ import apiClient from "../apiClient";
 import { TransactionDetails } from "@/types/transaction";
 
 export enum TransactionApi {
-    Transaction = "/transaction"
+    Transaction = "/inventory/transaction"
 }
 
 const getTransactionDetails = (productId: string) => {

@@ -4,7 +4,7 @@ import type { Company } from "#/company";
 import type { ProductStock } from "@/types/product";
 
 export enum CompanyApi {
-  Company = "/company",
+  Company = "/inventory/company",
 }
 
 const getCompanies = () => {

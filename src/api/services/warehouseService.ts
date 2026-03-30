@@ -2,7 +2,7 @@ import apiClient from "../apiClient";
 import { Warehouse } from "@/types/warehouse";
 
 export enum WarehouseApi {
-  Warehouse = "/warehouse"
+  Warehouse = "/inventory/warehouse"
 }
 
 const getWarehousesByCompany = (companyId: string) => {

@@ -3,7 +3,7 @@ import apiClient from "../apiClient";
 import { MovementType } from "@/types/enum";
 
 export enum MovementApi {
-  Movement = "/movement"
+  Movement = "/inventory/movement"
 }
 
 const createMovement = (movement: CreateMovement) => {
