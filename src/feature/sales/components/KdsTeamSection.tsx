@@ -27,7 +27,11 @@ export default function KdsTeamSection({
 	onAdvanceStatus,
 }: KdsTeamSectionProps) {
 	const visibleItems = hideFinishedItems
-		? items.filter((item) => item.orderItemStatusId !== OrderDetailStatus.Canceled && item.orderItemStatusId !== OrderDetailStatus.Delivered)
+		? items.filter(
+				(item) =>
+					item.orderItemStatusId !== OrderDetailStatus.Canceled &&
+					item.orderItemStatusId !== OrderDetailStatus.Delivered,
+			)
 		: items;
 
 	const sortedVisibleItems = useMemo(() => {
@@ -53,7 +57,7 @@ export default function KdsTeamSection({
 					</div>
 					<div className="flex flex-wrap items-center gap-2">
 						<Badge variant="outline">{items.length} items</Badge>
-						{hideFinishedItems ? <Badge variant="secondary">Ocultando cancelados</Badge> : null}
+						{hideFinishedItems ? <Badge variant="secondary">Ocultando cancelados y listos</Badge> : null}
 					</div>
 				</div>
 			</CardHeader>

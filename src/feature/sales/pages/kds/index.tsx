@@ -5,16 +5,26 @@ import { Card, CardContent } from "@/ui/card";
 import { Title } from "@/ui/typography";
 import { useSelectedCompanyId } from "@/store/companyStore";
 import { CircleAlert, RefreshCw } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import KdsTeamSection from "../../components/KdsTeamSection";
 import { useKds } from "../../hooks/use-kds";
+import { 
+  Select,
+  SelectTrigger,
+  SelectContent,
+  SelectGroup,
+  SelectValue,
+  SelectLabel,
+  SelectItem
+ } from "@/ui/select";
 
 export default function KdsPage() {
 	const selectedCompanyId = useSelectedCompanyId();
 	const companyId = Number.parseInt(selectedCompanyId ?? "", 10);
 	const hasValidCompany = Number.isInteger(companyId) && companyId > 0;
 	const [hideFinishedItems, setHideFinishedItems] = useState(true);
+	const [selectedTeamId, setSelectedTeamId] = useState<number | null>(null);
 
 	const {
 		teams,
@@ -28,6 +38,14 @@ export default function KdsPage() {
 		isUpdatingItemStatus,
 		updateItemStatus,
 	} = useKds(hasValidCompany ? companyId : null);
+
+	useEffect(() => {
+		if (teams.length === 0 || selectedTeamId !== null) {
+			return;
+		}
+
+		setSelectedTeamId(teams[0].id);
+	}, [selectedTeamId, teams]);
 
 	const handleRefresh = async () => {
 		if (!hasValidCompany) {
@@ -113,20 +131,40 @@ export default function KdsPage() {
 				</Card>
 			) : null}
 
-			{hasValidCompany && teams.length > 0 ? (
+			{hasValidCompany && !isLoadingTeams && teams.length > 0 && selectedTeamId !== null ? (
+				<Select onValueChange={(value) => setSelectedTeamId(Number(value))} defaultValue={selectedTeamId.toString()}>
+					<SelectTrigger className="w-1/6 self-start">		
+						<SelectValue placeholder="Seleccione un equipo" />
+					</SelectTrigger>
+					<SelectContent>
+						<SelectGroup>
+							<SelectLabel>Equipos disponibles</SelectLabel>
+							{teams.map((team) => (
+								<SelectItem value={team.id.toString()} key={team.id}>
+									{team.name}
+								</SelectItem>
+							))}
+						</SelectGroup>
+					</SelectContent>
+				</Select>
+			) : null}
+
+			{hasValidCompany && teams.length > 0 && selectedTeamId !== null ? (
 				<div className="flex flex-col gap-4">
-					{teams.map((team) => (
-						<KdsTeamSection
-							key={team.id}
-							team={team}
-							items={itemsByTeamId[team.id] ?? []}
-							isLoadingItems={isLoadingItemsByTeamId[team.id] ?? false}
-							hasItemsError={hasItemsErrorByTeamId[team.id] ?? false}
-							hideFinishedItems={hideFinishedItems}
-							isUpdatingStatus={isUpdatingItemStatus}
-							onAdvanceStatus={handleAdvanceStatus}
-						/>
-					))}
+					{teams
+						.filter((team) => team.id === selectedTeamId)
+						.map((team) => (
+							<KdsTeamSection
+								key={team.id}
+								team={team}
+								items={itemsByTeamId[team.id] ?? []}
+								isLoadingItems={isLoadingItemsByTeamId[team.id] ?? false}
+								hasItemsError={hasItemsErrorByTeamId[team.id] ?? false}
+								hideFinishedItems={hideFinishedItems}
+								isUpdatingStatus={isUpdatingItemStatus}
+								onAdvanceStatus={handleAdvanceStatus}
+							/>
+						))}
 				</div>
 			) : null}
 		</div>
