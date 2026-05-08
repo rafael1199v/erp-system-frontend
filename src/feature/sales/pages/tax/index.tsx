@@ -1,11 +1,10 @@
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-
+import { useSelectedCompanyId } from "@/store/companyStore";
+import { Title } from "@/ui/typography";
 import TaxSettingsForm from "../../components/TaxSettingsForm";
 import { useTax } from "../../hooks/use-tax";
 import { useUpdateTax } from "../../hooks/use-update-tax";
-import { useSelectedCompanyId } from "@/store/companyStore";
-import { Title } from "@/ui/typography";
 import { parseTaxPercentage } from "../../utils/saleUtils";
 
 export default function TaxPage() {

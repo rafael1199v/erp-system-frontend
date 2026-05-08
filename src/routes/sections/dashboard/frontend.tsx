@@ -1,13 +1,12 @@
 import type { RouteObject } from "react-router";
 import { Navigate } from "react-router";
-import { Component } from "./utils";
-
+import DashboardAnalysisPage from "@/feature/dashboard/pages/analysis";
+import CheckoutPage from "@/feature/sales/pages/checkout";
+import KdsPage from "@/feature/sales/pages/kds";
 import OrderPage from "@/feature/sales/pages/order";
 import OrderDetailPage from "@/feature/sales/pages/order-detail";
-import CheckoutPage from "@/feature/sales/pages/checkout";
 import TaxPage from "@/feature/sales/pages/tax";
-import KdsPage from "@/feature/sales/pages/kds";
-import DashboardAnalysisPage from "@/feature/dashboard/pages/analysis";
+import { Component } from "./utils";
 
 export function getFrontendDashboardRoutes(): RouteObject[] {
 	const frontendDashboardRoutes: RouteObject[] = [

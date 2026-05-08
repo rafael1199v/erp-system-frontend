@@ -1,9 +1,9 @@
 import { Badge } from "@/ui/badge";
 import { Button } from "@/ui/button";
 import { Card, CardContent } from "@/ui/card";
-import ResendCountBadge from "./ResendCountBadge";
 import { canAdvanceKdsStatus, getNextKdsStatus, getOrderDetailStatusLabel, OrderDetailStatus } from "../enums/kds";
 import type { KdsTeamItem } from "../types/kds";
+import ResendCountBadge from "./ResendCountBadge";
 
 type KdsItemCardProps = {
 	item: KdsTeamItem;

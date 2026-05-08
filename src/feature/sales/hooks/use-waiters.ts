@@ -9,6 +9,6 @@ export const useWaiters = (companyId: number | null) => {
 		queryFn: async () => {
 			return (await waiterApi.getWaiters(normalizedCompanyId)).data;
 		},
-		enabled: normalizedCompanyId > 0
+		enabled: normalizedCompanyId > 0,
 	});
 };

@@ -1,22 +1,22 @@
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useEffect, useState } from "react";
+import { Controller, useForm } from "react-hook-form";
+import { useNavigate, useParams } from "react-router";
+import { toast } from "sonner";
+import { z } from "zod";
+import categoryService from "@/api/services/categoryService";
+import productService from "@/api/services/productService";
+import supplierService from "@/api/services/supplierService";
+import unitService from "@/api/services/unitService";
+import { Combobox, type ComboboxOption } from "@/components/combobox";
+import { useSelectedCompanyId } from "@/store/companyStore";
+import { ProductStatus } from "@/types/enum";
+import type { CreateProduct, UpdateProduct } from "@/types/product";
 import { Button } from "@/ui/button";
 import { Field, FieldError, FieldLabel } from "@/ui/field";
 import { Input } from "@/ui/input";
-import { Controller, useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
-import { toast } from "sonner";
-import { Title } from "@/ui/typography";
-import { useSelectedCompanyId } from "@/store/companyStore";
-import { useEffect, useState } from "react";
-import { useNavigate, useParams } from "react-router";
-import { Combobox, type ComboboxOption } from "@/components/combobox";
-import { ProductStatus } from "@/types/enum";
-import type { CreateProduct, UpdateProduct } from "@/types/product";
-import categoryService from "@/api/services/categoryService";
-import unitService from "@/api/services/unitService";
-import supplierService from "@/api/services/supplierService";
-import productService from "@/api/services/productService";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/ui/select";
+import { Title } from "@/ui/typography";
 
 const productSchema = z.object({
 	name: z.string().nonempty("El nombre es requerido"),
@@ -252,14 +252,7 @@ export default function ProductFormPage() {
 
 				<Field className="w-1/2">
 					<FieldLabel htmlFor="currentCost">Costo actual</FieldLabel>
-					<Input
-						id="currentCost"
-						placeholder="0.00"
-						type="number"
-						step="0.01"
-						{...register("currentCost")}
-						min={0}
-					/>
+					<Input id="currentCost" placeholder="0.00" type="number" step="0.01" {...register("currentCost")} min={0} />
 					<FieldError>{errors.currentCost?.message}</FieldError>
 				</Field>
 
@@ -290,7 +283,7 @@ export default function ProductFormPage() {
 				</Field>
 
 				<Button type="submit" className="cursor-pointer w-1/2">
-					{ isEditing ? "Editar producto" : "Crear producto" }
+					{isEditing ? "Editar producto" : "Crear producto"}
 				</Button>
 			</form>
 		</div>

@@ -16,7 +16,7 @@ export enum StorageEnum {
 	I18N = "i18nextLng",
 	CompanyId = "selectedCompanyId",
 	CompanyName = "selectedCompanyName",
-	CompanyImage = "selectedCompanyImage"
+	CompanyImage = "selectedCompanyImage",
 }
 
 export enum ThemeMode {
@@ -42,7 +42,7 @@ export enum ThemeColorPresets {
 export enum LocalEnum {
 	en_US = "en_US",
 	zh_CN = "zh_CN",
-	es_ES = "es_ES"
+	es_ES = "es_ES",
 }
 
 export enum MultiTabOperation {
@@ -69,22 +69,22 @@ export enum HtmlDataAttribute {
 
 export enum ProductStatus {
 	AVAILABLE = 1,
-	UNAVAILABLE = 2
+	UNAVAILABLE = 2,
 }
 
 export enum MovementStatus {
 	DRAW = 1,
-	COMPLETED = 2
+	COMPLETED = 2,
 }
 
 export enum MovementType {
 	RECEIPT = 1,
 	ISSUE = 2,
-	ADJUSTMENT = 3
+	ADJUSTMENT = 3,
 }
 
 export enum TransactionType {
 	ADJUSTMENT = 1,
 	IN = 2,
-	OUT = 3
+	OUT = 3,
 }

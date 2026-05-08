@@ -1,23 +1,15 @@
+import { CircleAlert, RefreshCw } from "lucide-react";
+import { useEffect, useState } from "react";
+import { toast } from "sonner";
+import { useSelectedCompanyId } from "@/store/companyStore";
 import { Alert, AlertDescription, AlertTitle } from "@/ui/alert";
 import { Badge } from "@/ui/badge";
 import { Button } from "@/ui/button";
 import { Card, CardContent } from "@/ui/card";
+import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from "@/ui/select";
 import { Title } from "@/ui/typography";
-import { useSelectedCompanyId } from "@/store/companyStore";
-import { CircleAlert, RefreshCw } from "lucide-react";
-import { useEffect, useState } from "react";
-import { toast } from "sonner";
 import KdsTeamSection from "../../components/KdsTeamSection";
 import { useKds } from "../../hooks/use-kds";
-import { 
-  Select,
-  SelectTrigger,
-  SelectContent,
-  SelectGroup,
-  SelectValue,
-  SelectLabel,
-  SelectItem
- } from "@/ui/select";
 
 export default function KdsPage() {
 	const selectedCompanyId = useSelectedCompanyId();
@@ -133,7 +125,7 @@ export default function KdsPage() {
 
 			{hasValidCompany && !isLoadingTeams && teams.length > 0 && selectedTeamId !== null ? (
 				<Select onValueChange={(value) => setSelectedTeamId(Number(value))} defaultValue={selectedTeamId.toString()}>
-					<SelectTrigger className="w-1/6 self-start">		
+					<SelectTrigger className="w-1/6 self-start">
 						<SelectValue placeholder="Seleccione un equipo" />
 					</SelectTrigger>
 					<SelectContent>

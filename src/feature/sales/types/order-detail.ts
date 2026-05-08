@@ -50,4 +50,3 @@ export type OrderItem = {
 export type OrderLocationState = {
 	restaurantOrder?: RestaurantOrder;
 };
-

@@ -1,10 +1,10 @@
+import { Minus, Plus, RotateCcw } from "lucide-react";
 import { Badge } from "@/ui/badge";
 import { Button } from "@/ui/button";
 import { Textarea } from "@/ui/textarea";
 import { fCurrency } from "@/utils/format-number";
-import { Minus, Plus, RotateCcw } from "lucide-react";
-import ResendCountBadge from "./ResendCountBadge";
 import type { AvailableOrderProduct, OrderItem } from "../types/order-detail";
+import ResendCountBadge from "./ResendCountBadge";
 
 type OrderDetailItemCardProps = {
 	item: OrderItem;

@@ -1,12 +1,12 @@
-import { Title } from "@/ui/typography";
-import { DataTable } from "@/components/data-table";
-import { columns } from "./columns";
 import { useMemo } from "react";
-import { useSelectedCompanyId } from "@/store/companyStore";
 import { useNavigate } from "react-router";
+import { DataTable } from "@/components/data-table";
+import { useSelectedCompanyId } from "@/store/companyStore";
 import { Button } from "@/ui/button";
 import { Input } from "@/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/ui/select";
+import { Title } from "@/ui/typography";
+import { columns } from "./columns";
 import { useProductCatalogData } from "./hooks/use-product-catalog-data";
 import { type ProductActiveFilter, useProductCatalogFilters } from "./hooks/use-product-catalog-filters";
 

@@ -1,11 +1,11 @@
 import "dayjs/locale/zh-cn";
-import en_US from "antd/locale/en_US";
-import zh_CN from "antd/locale/zh_CN";
-import es_ES from "antd/locale/es_ES"
-import dayjs from "dayjs";
-import { useTranslation } from "react-i18next";
 
 import type { Locale as AntdLocal } from "antd/es/locale";
+import en_US from "antd/locale/en_US";
+import es_ES from "antd/locale/es_ES";
+import zh_CN from "antd/locale/zh_CN";
+import dayjs from "dayjs";
+import { useTranslation } from "react-i18next";
 import { LocalEnum } from "#/enum";
 
 type Locale = keyof typeof LocalEnum;
@@ -33,8 +33,8 @@ export const LANGUAGE_MAP: Record<Locale, Language> = {
 		locale: LocalEnum.es_ES,
 		label: "Spanish",
 		icon: "flag-es",
-		antdLocal: es_ES
-	}
+		antdLocal: es_ES,
+	},
 };
 
 export default function useLocale() {

@@ -1,8 +1,8 @@
+import axios, { type AxiosError, type AxiosRequestConfig, type AxiosResponse } from "axios";
+import { toast } from "sonner";
 import { GLOBAL_CONFIG } from "@/global-config";
 import { t } from "@/locales/i18n";
 import userStore from "@/store/userStore";
-import axios, { type AxiosRequestConfig, type AxiosError, type AxiosResponse } from "axios";
-import { toast } from "sonner";
 
 const createAxiosInstance = (baseURL: string) => {
 	const instance = axios.create({

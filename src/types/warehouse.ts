@@ -1,10 +1,10 @@
 export interface WarehouseWithStock {
-    id: number;
-    name: string;
-    stock: number;
+	id: number;
+	name: string;
+	stock: number;
 }
 
 export interface Warehouse {
-    id: number;
-    name: string;
+	id: number;
+	name: string;
 }

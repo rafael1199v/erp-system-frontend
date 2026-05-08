@@ -1,14 +1,14 @@
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import kdsApi from "../api/kdsApi";
+import orderApi from "../api/orderApi";
 import orderDetailApi from "../api/orderDetailApi";
 import type {
 	AvailableOrderProduct,
 	CreateOrderDetailRequest,
 	CreateOrderDetailResponse,
-	UpdateOrderDetailStatusRequest,
 	UpdateOrderDetailQuantityRequest,
+	UpdateOrderDetailStatusRequest,
 } from "../types/order-detail";
-import orderApi from "../api/orderApi";
 
 type UseOrderDetailParams = {
 	restaurantOrderId: number | null;
@@ -40,16 +40,16 @@ export const useOrderDetail = ({ restaurantOrderId, enabled }: UseOrderDetailPar
 		onSuccess() {
 			queryClient.invalidateQueries({ queryKey: ["sales-order-details"] });
 		},
-	})
+	});
 
 	const orderDetailsQuery = useQuery({
 		queryKey: ["sales-order-details", normalizedOrderId],
-		queryFn: async() => {
+		queryFn: async () => {
 			const response = await orderApi.getOrderDetails(normalizedOrderId);
 			return response.data;
 		},
 		enabled: enabled && normalizedOrderId > 0,
-	})
+	});
 
 	const createOrderDetailMutation = useMutation({
 		mutationFn: async (payload: CreateOrderDetailRequest) => {
@@ -99,8 +99,8 @@ export const useOrderDetail = ({ restaurantOrderId, enabled }: UseOrderDetailPar
 		},
 		refetchProducts: productsQuery.refetch,
 		orderDetails: orderDetailsQuery.data,
-		sendOrderToTeam: async() => {
+		sendOrderToTeam: async () => {
 			await sendOrderMutation.mutateAsync();
-		}
+		},
 	};
 };

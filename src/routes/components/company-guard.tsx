@@ -1,23 +1,23 @@
 import { useCallback, useEffect } from "react";
-import { useRouter } from "../hooks";
 import { useSelectedCompanyId } from "@/store/companyStore";
+import { useRouter } from "../hooks";
 
 type Props = {
-    children: React.ReactNode;
+	children: React.ReactNode;
 };
 export default function CompanyAuthGuard({ children }: Props) {
-    const router = useRouter();
-    const companyId = useSelectedCompanyId();
+	const router = useRouter();
+	const companyId = useSelectedCompanyId();
 
-    const check = useCallback(() => {
-        if (!companyId) {
-            router.replace("/company");
-        }
-    }, [router, companyId]);
+	const check = useCallback(() => {
+		if (!companyId) {
+			router.replace("/company");
+		}
+	}, [router, companyId]);
 
-    useEffect(() => {
-        check();
-    }, [check]);
+	useEffect(() => {
+		check();
+	}, [check]);
 
-    return <>{children}</>;
+	return <>{children}</>;
 }

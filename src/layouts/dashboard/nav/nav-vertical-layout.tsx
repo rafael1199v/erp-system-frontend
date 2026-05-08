@@ -2,7 +2,6 @@ import { Icon } from "@/components/icon";
 import Logo from "@/components/logo";
 import { NavMini, NavVertical } from "@/components/nav";
 import type { NavProps } from "@/components/nav/types";
-import { GLOBAL_CONFIG } from "@/global-config";
 import { useSelectedCompanyName } from "@/store/companyStore";
 import { useSettingActions, useSettings } from "@/store/settingStore";
 import { ThemeLayout } from "@/types/enum";
@@ -32,7 +31,10 @@ export function NavVerticalLayout({ data, className }: Props) {
 	return (
 		<nav
 			data-slot="slash-layout-nav"
-			className={cn("fixed inset-y-0 left-0 flex-col h-full bg-background border-r border-dashed z-nav transition-[width] duration-300 ease-in-out", className)}
+			className={cn(
+				"fixed inset-y-0 left-0 flex-col h-full bg-background border-r border-dashed z-nav transition-[width] duration-300 ease-in-out",
+				className,
+			)}
 			style={{
 				width: navWidth,
 			}}
@@ -57,8 +59,17 @@ export function NavVerticalLayout({ data, className }: Props) {
 					</span>
 				</div>
 
-				<Button variant="outline" size="icon" onClick={handleToggle} className="h-7 w-7 absolute right-0 translate-x-1/2">
-					{themeLayout === ThemeLayout.Mini ? <Icon icon="lucide:arrow-right-to-line" size={12} /> : <Icon icon="lucide:arrow-left-to-line" size={12} />}
+				<Button
+					variant="outline"
+					size="icon"
+					onClick={handleToggle}
+					className="h-7 w-7 absolute right-0 translate-x-1/2"
+				>
+					{themeLayout === ThemeLayout.Mini ? (
+						<Icon icon="lucide:arrow-right-to-line" size={12} />
+					) : (
+						<Icon icon="lucide:arrow-left-to-line" size={12} />
+					)}
 				</Button>
 			</div>
 

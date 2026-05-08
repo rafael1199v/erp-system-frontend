@@ -1,12 +1,12 @@
+import { format } from "date-fns";
+import { Clock3, Ticket, UserRound } from "lucide-react";
 import { Badge } from "@/ui/badge";
 import { Button } from "@/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/ui/select";
 import { Text } from "@/ui/typography";
-import { format } from "date-fns";
-import { Clock3, Ticket, UserRound } from "lucide-react";
-import type { Waiter, RestaurantOrder } from "../types/order";
 import { canCancelOrder, getOrderStatusBadgeVariant, getOrderStatusLabel, isOrderOpen } from "../enums/order";
+import type { RestaurantOrder, Waiter } from "../types/order";
 
 type PosTicketCardProps = {
 	restaurantOrder: RestaurantOrder;

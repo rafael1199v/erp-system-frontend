@@ -9,12 +9,12 @@ export const useRestaurantOrderPdf = ({ restaurantOrderId }: useRestaurantOrderP
 	const normalizedOrderId = restaurantOrderId ?? -1;
 
 	const orderPdfQuery = useQuery({
-        queryKey: ["restaurant-order-pdf"],
+		queryKey: ["restaurant-order-pdf"],
 		queryFn: async () => {
-            const response = await orderApi.getOrderPdf(normalizedOrderId);
-            return response.data;
-        },
-        enabled: false
+			const response = await orderApi.getOrderPdf(normalizedOrderId);
+			return response.data;
+		},
+		enabled: false,
 	});
 
 	return orderPdfQuery;

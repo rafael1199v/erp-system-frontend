@@ -1,5 +1,5 @@
-import taxApi from "../api/taxApi";
 import { useQuery } from "@tanstack/react-query";
+import taxApi from "../api/taxApi";
 
 export const useTax = (companyId: number | null) => {
 	const normalizedCompanyId = companyId ?? -1;

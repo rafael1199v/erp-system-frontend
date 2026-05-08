@@ -1,7 +1,7 @@
+import { Navigate, type RouteObject } from "react-router";
 import { GLOBAL_CONFIG } from "@/global-config";
 import DashboardLayout from "@/layouts/dashboard";
 import CompanyAuthGuard from "@/routes/components/company-guard";
-import { Navigate, type RouteObject } from "react-router";
 import { getBackendDashboardRoutes } from "./backend";
 import { getFrontendDashboardRoutes } from "./frontend";
 

@@ -32,9 +32,7 @@ export default function TaxSettingsForm({
 		<Card className="w-full max-w-xl">
 			<CardHeader>
 				<CardTitle>Configuracion de impuesto</CardTitle>
-				<CardDescription>
-					Actualiza el porcentaje de impuesto global usado en tus futuras ventas. 
-				</CardDescription>
+				<CardDescription>Actualiza el porcentaje de impuesto global usado en tus futuras ventas.</CardDescription>
 			</CardHeader>
 
 			<CardContent className="grid gap-2">

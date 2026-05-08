@@ -1,6 +1,6 @@
 import apiClient from "@/api/apiClient";
-import type { UpdateOrderDetailStatusRequest } from "../types/order-detail";
 import type { KdsTeam, KdsTeamItem } from "../types/kds";
+import type { UpdateOrderDetailStatusRequest } from "../types/order-detail";
 
 export enum SalesKdsApi {
 	Kds = "/sales/kds",

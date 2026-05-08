@@ -1,3 +1,9 @@
+import { useQuery } from "@tanstack/react-query";
+import { ArrowLeft, CircleAlert, CreditCard } from "lucide-react";
+import { useMemo, useState } from "react";
+import { useLocation, useNavigate, useParams } from "react-router";
+import { toast } from "sonner";
+import { useSelectedCompanyId } from "@/store/companyStore";
 import { Alert, AlertDescription, AlertTitle } from "@/ui/alert";
 import { Badge } from "@/ui/badge";
 import { Button } from "@/ui/button";
@@ -6,21 +12,15 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/ui/table";
 import { Title } from "@/ui/typography";
-import { useSelectedCompanyId } from "@/store/companyStore";
 import { fCurrency } from "@/utils/format-number";
-import { useQuery } from "@tanstack/react-query";
-import { ArrowLeft, CircleAlert, CreditCard } from "lucide-react";
-import { useMemo, useState } from "react";
-import { useLocation, useNavigate, useParams } from "react-router";
-import { toast } from "sonner";
 import orderApi from "../../api/orderApi";
+import { OrderDetailStatus } from "../../enums/kds";
 import { getOrderStatusLabel, isOrderOpen } from "../../enums/order";
-import { extractProcessPaymentApiError, useProcessPayment } from "../../hooks/use-process-payment";
-import { useRestaurantOrders } from "../../hooks/use-pos-tickets";
 import { usePaymentMethods } from "../../hooks/use-payment-methods";
+import { useRestaurantOrders } from "../../hooks/use-pos-tickets";
+import { extractProcessPaymentApiError, useProcessPayment } from "../../hooks/use-process-payment";
 import type { RestaurantOrder } from "../../types/order";
 import type { StockInsufficiencyResponseDto } from "../../types/payment";
-import { OrderDetailStatus } from "../../enums/kds";
 
 type CheckoutLocationState = {
 	restaurantOrder?: RestaurantOrder;

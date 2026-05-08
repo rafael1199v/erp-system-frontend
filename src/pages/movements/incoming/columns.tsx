@@ -1,6 +1,6 @@
+import type { ColumnDef } from "@tanstack/react-table";
 import { MovementStatus, MovementType } from "@/types/enum";
-import { Movement } from "@/types/movement";
-import { ColumnDef } from "@tanstack/react-table";
+import type { Movement } from "@/types/movement";
 
 export const columns: ColumnDef<Movement>[] = [
 	{

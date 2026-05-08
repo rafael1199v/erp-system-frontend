@@ -1,7 +1,7 @@
-import categoryService from "@/api/services/categoryService";
-import productService from "@/api/services/productService";
 import { useQuery } from "@tanstack/react-query";
 import { useMemo } from "react";
+import categoryService from "@/api/services/categoryService";
+import productService from "@/api/services/productService";
 import type { ProductCatalogRow } from "../columns";
 
 export const useProductCatalogData = (companyId: string | null) => {

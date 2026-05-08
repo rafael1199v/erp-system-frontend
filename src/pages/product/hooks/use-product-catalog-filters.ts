@@ -1,5 +1,5 @@
-import type { ProductCatalogRow } from "../columns";
 import { useEffect, useMemo, useState } from "react";
+import type { ProductCatalogRow } from "../columns";
 
 export type ProductActiveFilter = "all" | "active" | "inactive";
 

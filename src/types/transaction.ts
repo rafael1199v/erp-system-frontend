@@ -1,26 +1,26 @@
-import { TransactionType } from "./enum";
+import type { TransactionType } from "./enum";
 
 export interface Transaction {
-    id: number;
-    quantity: number;
-    reason: string;
-    transactionDate: string,
-    transactionType: TransactionType,
-    productId: number,
-    warehouseId: number
+	id: number;
+	quantity: number;
+	reason: string;
+	transactionDate: string;
+	transactionType: TransactionType;
+	productId: number;
+	warehouseId: number;
 }
 
 export interface TransactionDetails {
-    productId: number;
-    productName: string,
-    transactions: Array<Transaction>
+	productId: number;
+	productName: string;
+	transactions: Array<Transaction>;
 }
 
 export interface CreateTransaction {
-    quantity: number;
-    reason: string;
-    transactionDate: string,
-    transactionType: TransactionType,
-    productId: number,
-    warehouseId: number
+	quantity: number;
+	reason: string;
+	transactionDate: string;
+	transactionType: TransactionType;
+	productId: number;
+	warehouseId: number;
 }

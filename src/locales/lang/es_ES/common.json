@@ -1,22 +1,22 @@
 {
-  "common": {
-    "okText": "Aceptar",
-    "closeText": "Cerrar",
-    "cancelText": "Cancelar",
-    "loadingText": "Cargando...",
-    "saveText": "Guardar",
-    "delText": "Eliminar",
-    "resetText": "Restablecer",
-    "searchText": "Buscar",
-    "queryText": "Buscar",
+	"common": {
+		"okText": "Aceptar",
+		"closeText": "Cerrar",
+		"cancelText": "Cancelar",
+		"loadingText": "Cargando...",
+		"saveText": "Guardar",
+		"delText": "Eliminar",
+		"resetText": "Restablecer",
+		"searchText": "Buscar",
+		"queryText": "Buscar",
 
-    "inputText": "Por favor ingresa",
-    "chooseText": "Por favor selecciona",
+		"inputText": "Por favor ingresa",
+		"chooseText": "Por favor selecciona",
 
-    "redo": "Actualizar",
-    "back": "Volver",
+		"redo": "Actualizar",
+		"back": "Volver",
 
-    "light": "Claro",
-    "dark": "Oscuro"
-  }
+		"light": "Claro",
+		"dark": "Oscuro"
+	}
 }
