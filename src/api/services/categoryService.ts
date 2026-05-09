@@ -2,25 +2,25 @@ import type { Category, CreateCategory } from "@/types/category";
 import apiClient from "../apiClient";
 
 export enum CategoryApi {
-	Category = "/inventory/category",
+	Inventory = "/inventory",
 }
 
-const getCategories = (companyId: string) => {
+const getCategories = (companyCen: string) => {
 	return apiClient.get<Category[]>({
-		url: `${CategoryApi.Category}/${companyId}`,
+		url: `${CategoryApi.Inventory}/companies/${encodeURIComponent(companyCen)}/categories`,
 	});
 };
 
-const createCategory = (category: CreateCategory) => {
-	return apiClient.post<void>({
-		url: `${CategoryApi.Category}`,
+const createCategory = (companyCen: string, category: CreateCategory) => {
+	return apiClient.post<Category>({
+		url: `${CategoryApi.Inventory}/companies/${encodeURIComponent(companyCen)}/categories`,
 		data: category,
 	});
 };
 
-const updateCategory = (category: Category) => {
-	return apiClient.put<void>({
-		url: `${CategoryApi.Category}`,
+const updateCategory = (companyCen: string, categoryCen: string, category: CreateCategory) => {
+	return apiClient.put<Category>({
+		url: `${CategoryApi.Inventory}/companies/${encodeURIComponent(companyCen)}/categories/${encodeURIComponent(categoryCen)}`,
 		data: category,
 	});
 };

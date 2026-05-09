@@ -2,12 +2,12 @@ import type { Warehouse } from "@/types/warehouse";
 import apiClient from "../apiClient";
 
 export enum WarehouseApi {
-	Warehouse = "/inventory/warehouse",
+	Inventory = "/inventory",
 }
 
-const getWarehousesByCompany = (companyId: string) => {
+const getWarehousesByCompany = (companyCen: string) => {
 	return apiClient.get<Warehouse[]>({
-		url: `${WarehouseApi.Warehouse}/${companyId}`,
+		url: `${WarehouseApi.Inventory}/companies/${encodeURIComponent(companyCen)}/warehouses`,
 	});
 };
 

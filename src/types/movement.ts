@@ -1,20 +1,38 @@
-import type { MovementStatus, MovementType } from "./enum";
-import type { CreateTransaction, Transaction } from "./transaction";
+export type DocumentType = "ENTRY" | "EXIT" | "SALE_EXIT" | "ADJUSTMENT";
+export type AdjustmentType = "INCREASE" | "DECREASE";
 
 export interface Movement {
-	id: number;
-	title: string;
-	movementDate: string;
-	movementType: MovementType;
-	movementStatus: MovementStatus;
-	transactions: Array<Transaction>;
+	documentCen: string;
+	documentType: DocumentType;
+	status: string;
+	title?: string | null;
+	createdAt: string;
+	totalItems: number;
+	generatedMovementCens: string[];
 }
 
 export interface CreateMovement {
-	title: string;
-	movementDate: string;
-	movementType: MovementType;
-	movementStatus: MovementStatus;
-	companyId: number;
-	transactions: Array<CreateTransaction>;
+	documentType: Exclude<DocumentType, "ADJUSTMENT">;
+	warehouseCen: string;
+	reason?: string | null;
+	externalReference?: string | null;
+	lines: Array<InventoryDocumentLineRequest>;
+}
+
+export interface InventoryDocumentLineRequest {
+	productCen: string;
+	quantity: number;
+	unitCost?: number | null;
+}
+
+export interface InventoryAdjustmentRequest {
+	warehouseCen: string;
+	reason: string;
+	lines: Array<InventoryAdjustmentLineRequest>;
+}
+
+export interface InventoryAdjustmentLineRequest {
+	productCen: string;
+	quantity: number;
+	adjustmentType: AdjustmentType;
 }

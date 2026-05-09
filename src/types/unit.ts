@@ -1,10 +1,10 @@
 export interface Unit {
-	id: number;
+	unitCen: string;
 	name: string;
-	companyId: number;
+	abbreviation: string | null;
 }
 
 export interface CreateUnit {
 	name: string;
-	companyId: number;
+	abbreviation?: string | null;
 }

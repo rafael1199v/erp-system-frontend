@@ -60,6 +60,9 @@ class APIClient {
 	put<T = unknown>(config: AxiosRequestConfig): Promise<AxiosResponse<T>> {
 		return this.request<AxiosResponse<T>>({ ...config, method: "PUT" });
 	}
+	patch<T = unknown>(config: AxiosRequestConfig): Promise<AxiosResponse<T>> {
+		return this.request<AxiosResponse<T>>({ ...config, method: "PATCH" });
+	}
 	delete<T = unknown>(config: AxiosRequestConfig): Promise<AxiosResponse<T>> {
 		return this.request<AxiosResponse<T>>({ ...config, method: "DELETE" });
 	}

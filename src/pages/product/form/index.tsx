@@ -6,12 +6,10 @@ import { toast } from "sonner";
 import { z } from "zod";
 import categoryService from "@/api/services/categoryService";
 import productService from "@/api/services/productService";
-import supplierService from "@/api/services/supplierService";
 import unitService from "@/api/services/unitService";
 import { Combobox, type ComboboxOption } from "@/components/combobox";
-import { useSelectedCompanyId } from "@/store/companyStore";
-import { ProductStatus } from "@/types/enum";
-import type { CreateProduct, UpdateProduct } from "@/types/product";
+import { useSelectedCompanyCen } from "@/store/companyStore";
+import type { CreateProduct, ProductContractStatus, UpdateProduct } from "@/types/product";
 import { Button } from "@/ui/button";
 import { Field, FieldError, FieldLabel } from "@/ui/field";
 import { Input } from "@/ui/input";
@@ -19,31 +17,44 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Title } from "@/ui/typography";
 
 const productSchema = z.object({
+	sku: z.string().nonempty("El SKU es requerido"),
 	name: z.string().nonempty("El nombre es requerido"),
-	imageUrl: z.string().optional(),
-	categoryId: z.string().min(1, "La categoría es requerida"),
-	unitId: z.string().min(1, "La unidad es requerida"),
-	supplierId: z.string().min(1, "El proveedor es requerido"),
-	sellPrice: z.string().refine((val) => !Number.isNaN(val) && Number(val) > 0, {
+	description: z.string().optional(),
+	categoryCen: z.string().min(1, "La categoria es requerida"),
+	unitCen: z.string().min(1, "La unidad es requerida"),
+	salePrice: z.string().refine((val) => !Number.isNaN(Number(val)) && Number(val) > 0, {
 		message: "El precio de venta debe ser mayor a 0",
 	}),
-	currentCost: z.string().refine((val) => !Number.isNaN(val) && Number(val) > 0, {
-		message: "El costo del producto debe ser mayor a cero",
+	costPrice: z
+		.string()
+		.optional()
+		.refine((val) => !val || (!Number.isNaN(Number(val)) && Number(val) >= 0), {
+			message: "El costo del producto no puede ser negativo",
+		}),
+	reorderLevel: z.string().refine((val) => Number.isInteger(Number(val)) && Number(val) >= 0, {
+		message: "El nivel de reorden debe ser mayor o igual a 0",
 	}),
-	reorderLevel: z.string().min(1, "El nivel de reorden es requerido"),
-	productStatusId: z.string().min(1, "El estado del producto es requerido"),
+	status: z.enum(["ACTIVE", "INACTIVE", "OUT_OF_STOCK"]),
 });
 
+type ProductFormValues = z.infer<typeof productSchema>;
+
+const toNullableText = (value?: string) => {
+	const normalizedValue = value?.trim();
+	return normalizedValue ? normalizedValue : null;
+};
+
 export default function ProductFormPage() {
-	const companyId = useSelectedCompanyId() || "-1";
+	const companyCen = useSelectedCompanyCen() || "";
 	const nav = useNavigate();
 
 	const { id } = useParams();
-	const isEditing = !!id;
+	const productCen = id ? decodeURIComponent(id) : null;
+	const isEditing = Boolean(productCen);
 
 	const [categoryOptions, setCategoryOptions] = useState<ComboboxOption[]>([]);
 	const [unitOptions, setUnitOptions] = useState<ComboboxOption[]>([]);
-	const [supplierOptions, setSupplierOptions] = useState<ComboboxOption[]>([]);
+	const [initialStatus, setInitialStatus] = useState<ProductContractStatus>("ACTIVE");
 
 	const {
 		control,
@@ -51,71 +62,74 @@ export default function ProductFormPage() {
 		register,
 		reset,
 		formState: { errors },
-	} = useForm<z.infer<typeof productSchema>>({
+	} = useForm<ProductFormValues>({
 		resolver: zodResolver(productSchema),
 		defaultValues: {
+			sku: "",
 			name: "",
-			imageUrl: "",
-			categoryId: "",
-			unitId: "",
-			supplierId: "",
-			sellPrice: "",
-			currentCost: "",
+			description: "",
+			categoryCen: "",
+			unitCen: "",
+			salePrice: "",
+			costPrice: "",
 			reorderLevel: "",
-			productStatusId: ProductStatus.AVAILABLE.toString(),
+			status: "ACTIVE",
 		},
 	});
 
 	useEffect(() => {
 		const fetchProduct = async () => {
-			const response = await productService.getProductWithCompany(Number(id));
-			const productWithCompany = response.data;
-			console.log(response.data);
+			if (!companyCen || !productCen) return;
+
+			const response = await productService.getProductCatalog(companyCen);
+			const product = response.data.find((item) => item.productCen === productCen);
+
+			if (!product) {
+				toast.error("No se encontro el producto solicitado");
+				nav("/products");
+				return;
+			}
+
+			setInitialStatus(product.status);
 			reset({
-				name: productWithCompany.name,
-				imageUrl: productWithCompany.imageUrl ?? "",
-				categoryId: productWithCompany.categoryId.toString(),
-				unitId: productWithCompany.unitId.toString(),
-				supplierId: productWithCompany.supplierId.toString(),
-				sellPrice: productWithCompany.sellPrice.toString(),
-				currentCost: productWithCompany.currentCost.toString(),
-				reorderLevel: productWithCompany.reorderLevel.toString(),
-				productStatusId: productWithCompany.productStatusId.toString(),
+				sku: product.sku,
+				name: product.name,
+				description: product.description ?? "",
+				categoryCen: product.categoryCen,
+				unitCen: product.unitCen,
+				salePrice: product.salePrice.toString(),
+				costPrice: product.costPrice?.toString() ?? "",
+				reorderLevel: product.reorderLevel.toString(),
+				status: product.status,
 			});
 		};
 
 		if (isEditing) {
-			fetchProduct();
+			void fetchProduct();
 		}
-	}, [id, isEditing, reset]);
+	}, [companyCen, isEditing, nav, productCen, reset]);
 
 	useEffect(() => {
 		const fetchData = async () => {
+			if (!companyCen) return;
+
 			try {
-				const [categoriesRes, unitsRes, suppliersRes] = await Promise.all([
-					categoryService.getCategories(companyId),
-					unitService.getUnits(companyId),
-					supplierService.getSuppliers(companyId),
+				const [categoriesRes, unitsRes] = await Promise.all([
+					categoryService.getCategories(companyCen),
+					unitService.getUnits(companyCen),
 				]);
 
 				setCategoryOptions(
-					categoriesRes.data.map((c) => ({
-						value: c.id.toString(),
-						label: c.name,
+					categoriesRes.data.map((category) => ({
+						value: category.categoryCen,
+						label: category.name,
 					})),
 				);
 
 				setUnitOptions(
-					unitsRes.data.map((u) => ({
-						value: u.id.toString(),
-						label: u.name,
-					})),
-				);
-
-				setSupplierOptions(
-					suppliersRes.data.map((s) => ({
-						value: s.id.toString(),
-						label: s.name,
+					unitsRes.data.map((unit) => ({
+						value: unit.unitCen,
+						label: unit.name,
 					})),
 				);
 			} catch (error) {
@@ -124,58 +138,63 @@ export default function ProductFormPage() {
 			}
 		};
 
-		fetchData();
-	}, [companyId]);
+		void fetchData();
+	}, [companyCen]);
 
-	const onSubmit = async (values: z.infer<typeof productSchema>) => {
-		const product: CreateProduct = {
-			name: values.name,
-			imageUrl: values.imageUrl || null,
-			categoryId: Number.parseInt(values.categoryId),
-			unitId: Number.parseInt(values.unitId),
-			supplierId: Number.parseInt(values.supplierId),
-			companyId: Number.parseInt(companyId),
-			productStatusId: Number.parseInt(values.productStatusId),
-			sellPrice: Number.parseFloat(values.sellPrice),
-			currentCost: Number.parseFloat(values.currentCost),
-			reorderLevel: Number.parseInt(values.reorderLevel),
-		};
+	const onSubmit = async (values: ProductFormValues) => {
+		if (!companyCen) {
+			toast.error("Selecciona una compania antes de guardar el producto");
+			return;
+		}
 
-		const updateProduct: UpdateProduct = {
-			productId: Number(id),
-			name: values.name,
-			imageUrl: values.imageUrl || null,
-			categoryId: Number.parseInt(values.categoryId),
-			unitId: Number.parseInt(values.unitId),
-			supplierId: Number.parseInt(values.supplierId),
-			companyId: Number.parseInt(companyId),
-			productStatusId: Number.parseInt(values.productStatusId),
-			sellPrice: Number.parseFloat(values.sellPrice),
-			currentCost: Number.parseFloat(values.currentCost),
-			reorderLevel: Number.parseInt(values.reorderLevel),
+		const productPayload: CreateProduct | UpdateProduct = {
+			sku: values.sku.trim(),
+			name: values.name.trim(),
+			description: toNullableText(values.description),
+			categoryCen: values.categoryCen,
+			unitCen: values.unitCen,
+			salePrice: Number.parseFloat(values.salePrice),
+			costPrice: values.costPrice ? Number.parseFloat(values.costPrice) : null,
+			reorderLevel: Number.parseInt(values.reorderLevel, 10),
 		};
 
 		try {
-			if (isEditing) {
-				await productService.updateProduct(updateProduct);
-				toast.success("Producto actualizado con éxito");
+			if (isEditing && productCen) {
+				await productService.updateProduct(companyCen, productCen, productPayload);
+
+				if (values.status !== initialStatus) {
+					await productService.updateProductStatus(companyCen, productCen, values.status);
+				}
+
+				toast.success("Producto actualizado con exito");
 			} else {
-				await productService.createProduct(product);
-				toast.success("Producto creado con éxito");
+				const response = await productService.createProduct(companyCen, productPayload);
+
+				if (values.status !== "ACTIVE") {
+					await productService.updateProductStatus(companyCen, response.data.productCen || values.sku, values.status);
+				}
+
+				toast.success("Producto creado con exito");
 			}
 
 			nav("/products");
 		} catch (error) {
-			console.error("Error creating product", error);
-			toast.error("Error al crear el producto. Intente de nuevo.");
+			console.error("Error saving product", error);
+			toast.error("Error al guardar el producto. Intente de nuevo.");
 		}
 	};
 
 	return (
 		<div className="flex flex-col gap-8 w-full h-full">
-			<Title as="h1">Crear Producto</Title>
+			<Title as="h1">{isEditing ? "Editar Producto" : "Crear Producto"}</Title>
 
 			<form onSubmit={handleSubmit(onSubmit)} className="w-full flex flex-col gap-4 items-start">
+				<Field className="w-1/2">
+					<FieldLabel htmlFor="sku">SKU</FieldLabel>
+					<Input id="sku" placeholder="SKU-HAMB-001" type="text" {...register("sku")} />
+					<FieldError>{errors.sku?.message}</FieldError>
+				</Field>
+
 				<Field className="w-1/2">
 					<FieldLabel htmlFor="name">Nombre</FieldLabel>
 					<Input id="name" placeholder="Nombre del producto" type="text" {...register("name")} />
@@ -183,33 +202,33 @@ export default function ProductFormPage() {
 				</Field>
 
 				<Field className="w-1/2">
-					<FieldLabel htmlFor="imageUrl">URL de imagen (opcional)</FieldLabel>
-					<Input id="imageUrl" placeholder="https://ejemplo.com/imagen.png" type="text" {...register("imageUrl")} />
+					<FieldLabel htmlFor="description">Descripcion</FieldLabel>
+					<Input id="description" placeholder="Descripcion opcional" type="text" {...register("description")} />
 				</Field>
 
 				<Field className="w-1/2">
-					<FieldLabel htmlFor="categoryId">Categoría</FieldLabel>
+					<FieldLabel htmlFor="categoryCen">Categoria</FieldLabel>
 					<Controller
-						name="categoryId"
+						name="categoryCen"
 						control={control}
 						render={({ field }) => (
 							<Combobox
 								options={categoryOptions}
 								value={field.value}
 								onChange={field.onChange}
-								placeholder="Seleccionar categoría"
-								searchPlaceholder="Buscar categoría..."
-								emptyText="No se encontró la categoría."
+								placeholder="Seleccionar categoria"
+								searchPlaceholder="Buscar categoria..."
+								emptyText="No se encontro la categoria."
 							/>
 						)}
 					/>
-					<FieldError>{errors.categoryId?.message}</FieldError>
+					<FieldError>{errors.categoryCen?.message}</FieldError>
 				</Field>
 
 				<Field className="w-1/2">
-					<FieldLabel htmlFor="unitId">Unidad</FieldLabel>
+					<FieldLabel htmlFor="unitCen">Unidad</FieldLabel>
 					<Controller
-						name="unitId"
+						name="unitCen"
 						control={control}
 						render={({ field }) => (
 							<Combobox
@@ -218,42 +237,23 @@ export default function ProductFormPage() {
 								onChange={field.onChange}
 								placeholder="Seleccionar unidad"
 								searchPlaceholder="Buscar unidad..."
-								emptyText="No se encontró la unidad."
+								emptyText="No se encontro la unidad."
 							/>
 						)}
 					/>
-					<FieldError>{errors.unitId?.message}</FieldError>
+					<FieldError>{errors.unitCen?.message}</FieldError>
 				</Field>
 
 				<Field className="w-1/2">
-					<FieldLabel htmlFor="supplierId">Proveedor</FieldLabel>
-					<Controller
-						name="supplierId"
-						control={control}
-						render={({ field }) => (
-							<Combobox
-								options={supplierOptions}
-								value={field.value}
-								onChange={field.onChange}
-								placeholder="Seleccionar proveedor"
-								searchPlaceholder="Buscar proveedor..."
-								emptyText="No se encontró el proveedor."
-							/>
-						)}
-					/>
-					<FieldError>{errors.supplierId?.message}</FieldError>
+					<FieldLabel htmlFor="salePrice">Precio de venta</FieldLabel>
+					<Input id="salePrice" placeholder="0.00" type="number" step="0.01" {...register("salePrice")} min={0.01} />
+					<FieldError>{errors.salePrice?.message}</FieldError>
 				</Field>
 
 				<Field className="w-1/2">
-					<FieldLabel htmlFor="sellPrice">Precio de venta</FieldLabel>
-					<Input id="sellPrice" placeholder="0.00" type="number" step="0.01" {...register("sellPrice")} min={0.01} />
-					<FieldError>{errors.sellPrice?.message}</FieldError>
-				</Field>
-
-				<Field className="w-1/2">
-					<FieldLabel htmlFor="currentCost">Costo actual</FieldLabel>
-					<Input id="currentCost" placeholder="0.00" type="number" step="0.01" {...register("currentCost")} min={0} />
-					<FieldError>{errors.currentCost?.message}</FieldError>
+					<FieldLabel htmlFor="costPrice">Costo actual</FieldLabel>
+					<Input id="costPrice" placeholder="0.00" type="number" step="0.01" {...register("costPrice")} min={0} />
+					<FieldError>{errors.costPrice?.message}</FieldError>
 				</Field>
 
 				<Field className="w-1/2">
@@ -263,9 +263,9 @@ export default function ProductFormPage() {
 				</Field>
 
 				<Field className="w-1/2">
-					<FieldLabel htmlFor="productStatusId">Estado del producto</FieldLabel>
+					<FieldLabel htmlFor="status">Estado del producto</FieldLabel>
 					<Controller
-						name="productStatusId"
+						name="status"
 						control={control}
 						render={({ field }) => (
 							<Select value={field.value} onValueChange={field.onChange}>
@@ -273,13 +273,14 @@ export default function ProductFormPage() {
 									<SelectValue placeholder="Seleccionar estado" />
 								</SelectTrigger>
 								<SelectContent>
-									<SelectItem value={ProductStatus.AVAILABLE.toString()}>Disponible</SelectItem>
-									<SelectItem value={ProductStatus.UNAVAILABLE.toString()}>No disponible</SelectItem>
+									<SelectItem value="ACTIVE">Activo</SelectItem>
+									<SelectItem value="INACTIVE">Inactivo</SelectItem>
+									<SelectItem value="OUT_OF_STOCK">Sin stock</SelectItem>
 								</SelectContent>
 							</Select>
 						)}
 					/>
-					<FieldError>{errors.productStatusId?.message}</FieldError>
+					<FieldError>{errors.status?.message}</FieldError>
 				</Field>
 
 				<Button type="submit" className="cursor-pointer w-1/2">

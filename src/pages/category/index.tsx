@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import categoryService from "@/api/services/categoryService";
 import { DataTable } from "@/components/data-table";
-import { useSelectedCompanyId } from "@/store/companyStore";
+import { useSelectedCompanyCen } from "@/store/companyStore";
 import type { Category } from "@/types/category";
 import { Button } from "@/ui/button";
 import {
@@ -20,8 +20,7 @@ import { Title } from "@/ui/typography";
 import { type CategoryRow, getColumns } from "./columns";
 
 export default function CategoryPage() {
-	const selectedCompanyId = useSelectedCompanyId();
-	const companyId = Number.parseInt(selectedCompanyId || "1", 10);
+	const selectedCompanyCen = useSelectedCompanyCen();
 
 	const [allCategories, setAllCategories] = useState<Category[]>([]);
 	const [createOpen, setCreateOpen] = useState<boolean>(false);
@@ -31,17 +30,18 @@ export default function CategoryPage() {
 	const [editingCategoryName, setEditingCategoryName] = useState<string>("");
 
 	const fetchCategories = useCallback(async () => {
-		const response = await categoryService.getCategories(selectedCompanyId || "-1");
+		if (!selectedCompanyCen) {
+			setAllCategories([]);
+			return;
+		}
+
+		const response = await categoryService.getCategories(selectedCompanyCen);
 		setAllCategories(response.data);
-	}, [selectedCompanyId]);
+	}, [selectedCompanyCen]);
 
 	useEffect(() => {
 		void fetchCategories();
 	}, [fetchCategories]);
-
-	const categories = useMemo(() => {
-		return allCategories.filter((category) => category.companyId === companyId);
-	}, [allCategories, companyId]);
 
 	const handleCreateCategory = async () => {
 		const normalizedName = categoryName.trim();
@@ -55,7 +55,11 @@ export default function CategoryPage() {
 			return;
 		}
 
-		await categoryService.createCategory({ name: normalizedName, companyId: parseInt(selectedCompanyId || "-1") });
+		if (!selectedCompanyCen) {
+			return;
+		}
+
+		await categoryService.createCategory(selectedCompanyCen, { name: normalizedName, description: null });
 
 		await fetchCategories();
 		setCategoryName("");
@@ -78,7 +82,7 @@ export default function CategoryPage() {
 			return;
 		}
 
-		const currentCategory = allCategories.find((category) => category.id === editingCategory.id);
+		const currentCategory = allCategories.find((category) => category.categoryCen === editingCategory.categoryCen);
 		const currentName = currentCategory?.name.trim().toLowerCase() ?? "";
 		if (currentName === normalizedName.toLowerCase()) {
 			setEditingCategory(null);
@@ -88,7 +92,9 @@ export default function CategoryPage() {
 		}
 
 		const duplicatedName = allCategories.some(
-			(category) => category.id !== editingCategory.id && category.name.toLowerCase() === normalizedName.toLowerCase(),
+			(category) =>
+				category.categoryCen !== editingCategory.categoryCen &&
+				category.name.toLowerCase() === normalizedName.toLowerCase(),
 		);
 
 		if (duplicatedName) {
@@ -96,10 +102,13 @@ export default function CategoryPage() {
 			return;
 		}
 
-		await categoryService.updateCategory({
-			id: editingCategory.id,
+		if (!selectedCompanyCen) {
+			return;
+		}
+
+		await categoryService.updateCategory(selectedCompanyCen, editingCategory.categoryCen, {
 			name: normalizedName,
-			companyId,
+			description: currentCategory?.description ?? null,
 		});
 
 		await fetchCategories();
@@ -188,9 +197,9 @@ export default function CategoryPage() {
 			<div className="h-full w-11/12">
 				<DataTable
 					columns={columns}
-					data={categories.map<CategoryRow>((category) => {
+					data={allCategories.map<CategoryRow>((category) => {
 						return {
-							id: category.id,
+							categoryCen: category.categoryCen,
 							name: category.name,
 						};
 					})}

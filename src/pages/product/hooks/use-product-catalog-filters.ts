@@ -24,14 +24,17 @@ export const useProductCatalogFilters = (products: ProductCatalogRow[]) => {
 
 		return products.filter((product) => {
 			const matchesSearch =
-				normalizedSearchTerm.length === 0 || product.productName.toLocaleLowerCase().includes(normalizedSearchTerm);
+				normalizedSearchTerm.length === 0 ||
+				product.name.toLocaleLowerCase().includes(normalizedSearchTerm) ||
+				product.sku.toLocaleLowerCase().includes(normalizedSearchTerm) ||
+				product.productCen.toLocaleLowerCase().includes(normalizedSearchTerm);
 
-			const matchesCategory = selectedCategory === "all" || product.categoryId === Number(selectedCategory);
+			const matchesCategory = selectedCategory === "all" || product.categoryCen === selectedCategory;
 
 			const matchesStatus =
 				selectedStatus === "all" ||
-				(selectedStatus === "active" && product.isActive) ||
-				(selectedStatus === "inactive" && !product.isActive);
+				(selectedStatus === "active" && product.status === "ACTIVE") ||
+				(selectedStatus === "inactive" && product.status !== "ACTIVE");
 
 			return matchesSearch && matchesCategory && matchesStatus;
 		});

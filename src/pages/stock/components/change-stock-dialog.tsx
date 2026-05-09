@@ -1,10 +1,9 @@
 import { useState } from "react";
 import { toast } from "sonner";
 import movementService from "@/api/services/movementService";
-import { useSelectedCompanyId } from "@/store/companyStore";
-import { MovementStatus, MovementType, TransactionType } from "@/types/enum";
+import { useSelectedCompanyCen } from "@/store/companyStore";
 import type { UpdateStockForm, UpdateStockFormErrors } from "@/types/forms/update-stock-form";
-import type { CreateMovement } from "@/types/movement";
+import type { InventoryAdjustmentRequest } from "@/types/movement";
 import { Button } from "@/ui/button";
 import {
 	Dialog,
@@ -29,10 +28,10 @@ interface ChangeStockDialogProps {
 
 export default function ChangeStockDialog({ productWithWarehouse, onStockUpdated }: ChangeStockDialogProps) {
 	const [open, setOpen] = useState<boolean>(false);
-	const companyId = useSelectedCompanyId() || "-1";
+	const companyCen = useSelectedCompanyCen() || "";
 
 	const [updateStockForm, setUpdateStockForm] = useState<UpdateStockForm>({
-		stock: productWithWarehouse.stock,
+		stock: productWithWarehouse.availableQuantity,
 		reason: "",
 	});
 
@@ -60,28 +59,32 @@ export default function ChangeStockDialog({ productWithWarehouse, onStockUpdated
 		const hasNoErrors: boolean = Object.keys(errors).every((key) => errors[key as keyof typeof errors] === null);
 
 		if (hasNoErrors) {
-			console.log("Submit form", updateStockForm);
+			const delta = updateStockForm.stock - productWithWarehouse.availableQuantity;
 
-			const movement: CreateMovement = {
-				title: `Adjustment for '${productWithWarehouse.productName}'`,
-				movementDate: new Date().toISOString().split("T")[0],
-				movementStatus: MovementStatus.DRAW,
-				movementType: MovementType.ADJUSTMENT,
-				companyId: parseInt(companyId),
-				transactions: [
+			if (delta === 0) {
+				setOpen(false);
+				return;
+			}
+
+			if (!companyCen) {
+				toast.error("Selecciona una compania antes de ajustar stock");
+				return;
+			}
+
+			const movement: InventoryAdjustmentRequest = {
+				warehouseCen: productWithWarehouse.warehouseCen,
+				reason: updateStockForm.reason,
+				lines: [
 					{
-						quantity: updateStockForm.stock - productWithWarehouse.stock,
-						reason: updateStockForm.reason,
-						transactionDate: new Date().toISOString().split("T")[0],
-						transactionType: TransactionType.ADJUSTMENT,
-						productId: productWithWarehouse.productId,
-						warehouseId: productWithWarehouse.warehouseId,
+						productCen: productWithWarehouse.productCen,
+						quantity: Math.abs(delta),
+						adjustmentType: delta > 0 ? "INCREASE" : "DECREASE",
 					},
 				],
 			};
 
 			try {
-				await movementService.createAdjustment(movement);
+				await movementService.createAdjustment(companyCen, movement);
 				await onStockUpdated();
 				toast.success("Ajuste completado correctamente");
 			} catch (err) {

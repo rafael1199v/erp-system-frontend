@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { useNavigate } from "react-router";
 import { DataTable } from "@/components/data-table";
-import { useSelectedCompanyId } from "@/store/companyStore";
+import { useSelectedCompanyCen } from "@/store/companyStore";
 import { Button } from "@/ui/button";
 import { Input } from "@/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/ui/select";
@@ -11,10 +11,10 @@ import { useProductCatalogData } from "./hooks/use-product-catalog-data";
 import { type ProductActiveFilter, useProductCatalogFilters } from "./hooks/use-product-catalog-filters";
 
 export default function ProductPage() {
-	const companyId = useSelectedCompanyId();
+	const companyCen = useSelectedCompanyCen();
 	const nav = useNavigate();
 
-	const { catalogRows, categories, isLoading, isError, refreshCatalog } = useProductCatalogData(companyId);
+	const { catalogRows, categories, isLoading, isError, refreshCatalog } = useProductCatalogData(companyCen);
 
 	const {
 		searchTerm,
@@ -28,10 +28,14 @@ export default function ProductPage() {
 
 	const tableColumns = useMemo(
 		() =>
-			columns(nav, async () => {
-				await refreshCatalog();
-			}),
-		[nav, refreshCatalog],
+			columns(
+				nav,
+				async () => {
+					await refreshCatalog();
+				},
+				companyCen,
+			),
+		[nav, refreshCatalog, companyCen],
 	);
 
 	return (
@@ -61,7 +65,7 @@ export default function ProductPage() {
 							{selectedCategory === "all" ? (
 								<span className="text-muted-foreground">Filtrar por categoria</span>
 							) : (
-								categories.find((c) => String(c.id) === selectedCategory)?.name
+								categories.find((c) => c.categoryCen === selectedCategory)?.name
 							)}
 						</SelectValue>
 					</SelectTrigger>
@@ -70,7 +74,7 @@ export default function ProductPage() {
 						<SelectItem value="all">Todas</SelectItem>
 
 						{categories.map((category) => (
-							<SelectItem key={category.id} value={String(category.id)}>
+							<SelectItem key={category.categoryCen} value={category.categoryCen}>
 								{category.name}
 							</SelectItem>
 						))}

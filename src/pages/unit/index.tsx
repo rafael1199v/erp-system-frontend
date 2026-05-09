@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import unitService from "@/api/services/unitService";
 import { DataTable } from "@/components/data-table";
-import { useSelectedCompanyId } from "@/store/companyStore";
+import { useSelectedCompanyCen } from "@/store/companyStore";
 import type { Unit } from "@/types/unit";
 import { Button } from "@/ui/button";
 import {
@@ -20,8 +20,7 @@ import { Title } from "@/ui/typography";
 import { getColumns, type UnitRow } from "./columns";
 
 export default function UnitPage() {
-	const selectedCompanyId = useSelectedCompanyId();
-	const companyId = Number.parseInt(selectedCompanyId || "1", 10);
+	const selectedCompanyCen = useSelectedCompanyCen();
 
 	const [allUnits, setAllUnits] = useState<Unit[]>([]);
 	const [createOpen, setCreateOpen] = useState<boolean>(false);
@@ -31,17 +30,18 @@ export default function UnitPage() {
 	const [editingUnitName, setEditingUnitName] = useState<string>("");
 
 	const fetchUnits = useCallback(async () => {
-		const response = await unitService.getUnits(selectedCompanyId || "-1");
+		if (!selectedCompanyCen) {
+			setAllUnits([]);
+			return;
+		}
+
+		const response = await unitService.getUnits(selectedCompanyCen);
 		setAllUnits(response.data);
-	}, [selectedCompanyId]);
+	}, [selectedCompanyCen]);
 
 	useEffect(() => {
 		void fetchUnits();
 	}, [fetchUnits]);
-
-	const units = useMemo(() => {
-		return allUnits.filter((unit) => unit.companyId === companyId);
-	}, [allUnits, companyId]);
 
 	const handleCreateUnit = async () => {
 		const normalizedName = unitName.trim();
@@ -55,7 +55,11 @@ export default function UnitPage() {
 			return;
 		}
 
-		await unitService.createUnit({ name: normalizedName, companyId: parseInt(selectedCompanyId || "-1") });
+		if (!selectedCompanyCen) {
+			return;
+		}
+
+		await unitService.createUnit(selectedCompanyCen, { name: normalizedName, abbreviation: null });
 
 		await fetchUnits();
 		setUnitName("");
@@ -78,7 +82,7 @@ export default function UnitPage() {
 			return;
 		}
 
-		const currentUnit = allUnits.find((unit) => unit.id === editingUnit.id);
+		const currentUnit = allUnits.find((unit) => unit.unitCen === editingUnit.unitCen);
 		const currentName = currentUnit?.name.trim().toLowerCase() ?? "";
 		if (currentName === normalizedName.toLowerCase()) {
 			setEditingUnit(null);
@@ -88,7 +92,7 @@ export default function UnitPage() {
 		}
 
 		const duplicatedName = allUnits.some(
-			(unit) => unit.id !== editingUnit.id && unit.name.toLowerCase() === normalizedName.toLowerCase(),
+			(unit) => unit.unitCen !== editingUnit.unitCen && unit.name.toLowerCase() === normalizedName.toLowerCase(),
 		);
 
 		if (duplicatedName) {
@@ -96,10 +100,13 @@ export default function UnitPage() {
 			return;
 		}
 
-		await unitService.updateUnit({
-			id: editingUnit.id,
+		if (!selectedCompanyCen) {
+			return;
+		}
+
+		await unitService.updateUnit(selectedCompanyCen, editingUnit.unitCen, {
 			name: normalizedName,
-			companyId,
+			abbreviation: currentUnit?.abbreviation ?? null,
 		});
 
 		await fetchUnits();
@@ -188,8 +195,8 @@ export default function UnitPage() {
 			<div className="h-full w-11/12">
 				<DataTable
 					columns={columns}
-					data={units.map<UnitRow>((unit) => ({
-						id: unit.id,
+					data={allUnits.map<UnitRow>((unit) => ({
+						unitCen: unit.unitCen,
 						name: unit.name,
 					}))}
 				/>

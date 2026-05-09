@@ -4,15 +4,11 @@ import type { ColumnDef } from "@tanstack/react-table";
 import { Button } from "@/ui/button";
 
 export interface CategoryRow {
-	id: number;
+	categoryCen: string;
 	name: string;
 }
 
 export const getColumns = (onEdit: (category: CategoryRow) => void): ColumnDef<CategoryRow>[] => [
-	{
-		accessorKey: "id",
-		header: "Codigo",
-	},
 	{
 		accessorKey: "name",
 		header: "Nombre",

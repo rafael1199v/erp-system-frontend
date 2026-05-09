@@ -2,41 +2,47 @@ import { useEffect, useState } from "react";
 import { useParams } from "react-router";
 import transactionService from "@/api/services/transactionService";
 import { DataTable } from "@/components/data-table";
-import type { Transaction, TransactionDetails } from "@/types/transaction";
+import { useSelectedCompanyCen } from "@/store/companyStore";
+import type { Transaction } from "@/types/transaction";
 import { Title } from "@/ui/typography";
 import { getColumns } from "./columns";
 
 export default function TransactionDetailsPage() {
 	const { productId } = useParams();
+	const companyCen = useSelectedCompanyCen();
+	const productCen = productId ? decodeURIComponent(productId) : "";
 	const [transactions, setTransactions] = useState<Transaction[]>([]);
-	const [productName, setProductName] = useState<string>("Anonymous");
 
 	useEffect(() => {
 		const fetchTransactionDetails = async (): Promise<void> => {
-			const response = await transactionService.getTransactionDetails(productId || "-1");
-			const transactionDetail: TransactionDetails = response.data;
+			if (!companyCen || !productCen) {
+				setTransactions([]);
+				return;
+			}
 
-			transactionDetail.transactions.sort((a, b) => {
-				const firstDateTime = new Date(a.transactionDate).getTime();
-				const secondDateTime = new Date(b.transactionDate).getTime();
+			const response = await transactionService.getTransactionDetails(companyCen, productCen);
+			const transactionDetails = response.data;
+
+			transactionDetails.sort((first, second) => {
+				const firstDateTime = new Date(first.createdAt).getTime();
+				const secondDateTime = new Date(second.createdAt).getTime();
 
 				if (firstDateTime === secondDateTime) {
-					return b.id - a.id;
+					return second.movementCen.localeCompare(first.movementCen);
 				}
 
 				return secondDateTime - firstDateTime;
 			});
 
-			setTransactions(transactionDetail.transactions);
-			setProductName(transactionDetail.productName);
+			setTransactions(transactionDetails);
 		};
 
-		fetchTransactionDetails();
-	}, [productId]);
+		void fetchTransactionDetails();
+	}, [companyCen, productCen]);
 
 	return (
 		<div className="flex flex-col w-full h-full gap-4">
-			<Title as="h1">Producto: {productName ?? "Sin datos"}</Title>
+			<Title as="h1">Producto: {productCen || "Sin datos"}</Title>
 
 			<div className="h-full w-11/12">
 				<DataTable columns={getColumns()} data={transactions} />

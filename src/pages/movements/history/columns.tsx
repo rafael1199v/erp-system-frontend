@@ -1,46 +1,29 @@
 import type { ColumnDef } from "@tanstack/react-table";
-import { MovementStatus, MovementType } from "@/types/enum";
-import type { Movement } from "@/types/movement";
+import type { DocumentType, Movement } from "@/types/movement";
+
+const getDocumentTypeLabel = (documentType: DocumentType) => {
+	if (documentType === "ENTRY") return "Entrada";
+	if (documentType === "EXIT" || documentType === "SALE_EXIT") return "Salida";
+	return "Ajuste";
+};
 
 export const columns: ColumnDef<Movement>[] = [
 	{
-		accessorKey: "id",
-		header: "Código",
-	},
-	{
 		accessorKey: "title",
-		header: "Título",
+		header: "Titulo",
+		cell: ({ row }) => <div>{row.original.title || "Sin titulo"}</div>,
 	},
 	{
-		accessorKey: "movementDate",
+		accessorKey: "createdAt",
 		header: "Fecha",
 	},
 	{
-		accessorKey: "movementType",
+		accessorKey: "documentType",
 		header: "Tipo",
-		cell: ({ row }) => {
-			const movementType = row.getValue("movementType") as MovementType;
-
-			if (movementType === MovementType.RECEIPT) return <div>Entrada</div>;
-			if (movementType === MovementType.ISSUE) return <div>Salida</div>;
-
-			return <div>Ajuste</div>;
-		},
+		cell: ({ row }) => <div>{getDocumentTypeLabel(row.getValue("documentType"))}</div>,
 	},
 	{
-		accessorKey: "movementStatus",
-		header: "Estado",
-		cell: ({ row }) => {
-			const movementStatus = row.getValue("movementStatus") as MovementStatus;
-
-			if (movementStatus === MovementStatus.COMPLETED) return <div>Completado</div>;
-
-			return <div>Borrador</div>;
-		},
-	},
-	{
-		accessorKey: "transactions",
-		header: "Transacciones",
-		cell: ({ row }) => <div>{row.original.transactions.length}</div>,
+		accessorKey: "totalItems",
+		header: "Movimientos",
 	},
 ];

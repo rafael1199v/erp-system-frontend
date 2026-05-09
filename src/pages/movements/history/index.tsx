@@ -1,20 +1,25 @@
 import { useEffect, useState } from "react";
 import movementService from "@/api/services/movementService";
 import { DataTable } from "@/components/data-table";
-import { useSelectedCompanyId } from "@/store/companyStore";
+import { useSelectedCompanyCen } from "@/store/companyStore";
 import type { Movement } from "@/types/movement";
 import { Title } from "@/ui/typography";
 import { columns } from "./columns";
 
 export default function MovementsHistoryPage() {
-	const companyId = useSelectedCompanyId() || "-1";
+	const companyCen = useSelectedCompanyCen() || "";
 
 	const [historyMovements, setHistoryMovements] = useState<Movement[]>([]);
 
 	useEffect(() => {
 		const fetchHistoryMovements = async () => {
+			if (!companyCen) {
+				setHistoryMovements([]);
+				return;
+			}
+
 			try {
-				const response = await movementService.getMovements(companyId);
+				const response = await movementService.getMovements(companyCen);
 				setHistoryMovements(response.data);
 			} catch (error) {
 				console.error(error);
@@ -22,7 +27,7 @@ export default function MovementsHistoryPage() {
 		};
 
 		fetchHistoryMovements();
-	}, [companyId]);
+	}, [companyCen]);
 
 	return (
 		<div className="flex flex-col w-full h-full gap-4">

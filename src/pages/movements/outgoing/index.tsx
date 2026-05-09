@@ -2,23 +2,27 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router";
 import movementService from "@/api/services/movementService";
 import { DataTable } from "@/components/data-table";
-import { useSelectedCompanyId } from "@/store/companyStore";
-import { MovementType } from "@/types/enum";
+import { useSelectedCompanyCen } from "@/store/companyStore";
 import type { Movement } from "@/types/movement";
 import { Button } from "@/ui/button";
 import { Title } from "@/ui/typography";
 import { columns } from "./columns";
 
 export default function MovementsOutgoingPage() {
-	const companyId = useSelectedCompanyId() || "-1";
+	const companyCen = useSelectedCompanyCen() || "";
 
 	const [outgointMovements, setOutgoingMovements] = useState<Movement[]>([]);
 	const nav = useNavigate();
 
 	useEffect(() => {
 		const fetchOutgoingMovements = async () => {
+			if (!companyCen) {
+				setOutgoingMovements([]);
+				return;
+			}
+
 			try {
-				const response = await movementService.getMovementsByType(MovementType.ISSUE, companyId);
+				const response = await movementService.getMovementsByType("EXIT", companyCen);
 				setOutgoingMovements(response.data);
 			} catch (error) {
 				console.error(error);
@@ -26,7 +30,7 @@ export default function MovementsOutgoingPage() {
 		};
 
 		fetchOutgoingMovements();
-	}, [companyId]);
+	}, [companyCen]);
 
 	return (
 		<div className="flex flex-col w-full h-full gap-4">

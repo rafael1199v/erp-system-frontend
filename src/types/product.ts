@@ -1,68 +1,59 @@
-import type { WarehouseWithStock } from "./warehouse";
+export type ProductContractStatus = "ACTIVE" | "INACTIVE" | "OUT_OF_STOCK";
 
 export interface ProductCatalog {
-	productId: number;
-	productName: string;
-	unit: number;
-	currentCost: number;
-	imageUrl: string | null;
-	categoryId: number;
+	productCen: string;
+	sku: string;
+	name: string;
+	description: string | null;
+	categoryCen: string;
 	categoryName: string;
-	statusCode: number;
-	isActive: boolean;
+	unitCen: string;
+	unitName: string;
+	salePrice: number;
+	costPrice: number | null;
+	reorderLevel: number;
+	status: ProductContractStatus;
 }
 
 export interface ProductStock {
-	productId: number;
+	productCen: string;
 	productName: string;
-	unit: string;
-	currentCost: number;
-	totalStock: number;
-	imageUrl: string | null;
+	warehouseCen: string;
+	warehouseName: string;
+	availableQuantity: number;
+	reservedQuantity: number;
+	unitName: string;
+	reorderLevel: number;
+	isLowStock: boolean;
 }
 
-export interface ProductWithWarehouses {
-	product: ProductCatalog;
-	warehouses: WarehouseWithStock[];
-}
+export type StockItem = ProductStock;
 
 export interface CreateProduct {
+	sku: string;
 	name: string;
-	imageUrl: string | null;
-	unitId: number;
-	companyId: number;
-	productStatusId: number;
-	supplierId: number;
-	categoryId: number;
-	currentCost: number;
+	description?: string | null;
+	categoryCen: string;
+	unitCen: string;
+	salePrice: number;
+	costPrice?: number | null;
 	reorderLevel: number;
-	sellPrice: number;
 }
 
 export interface UpdateProduct {
-	productId: number;
+	sku: string;
 	name: string;
-	imageUrl: string | null;
-	unitId: number;
-	companyId: number;
-	productStatusId: number;
-	supplierId: number;
-	categoryId: number;
-	currentCost: number;
+	description?: string | null;
+	categoryCen: string;
+	unitCen: string;
+	salePrice: number;
+	costPrice?: number | null;
 	reorderLevel: number;
-	sellPrice: number;
 }
 
-export interface Product {
-	id: number;
-	name: string;
-	imageUrl: string | null;
-	unitId: number;
-	companyId: number;
-	productStatusId: number;
-	supplierId: number;
-	categoryId: number;
-	currentCost: number;
-	reorderLevel: number;
-	sellPrice: number;
+export interface UpdateProductStatus {
+	status: ProductContractStatus;
+	reason?: string | null;
 }
+
+export type Product = ProductCatalog;

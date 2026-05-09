@@ -1,4 +1,13 @@
 export interface Company {
-	id: number;
+	companyCen: string;
 	name: string;
+	isActive: boolean;
+}
+
+export interface InventoryDashboard {
+	companyCen: string;
+	totalProducts: number;
+	totalStockQuantity: number;
+	lowStockCount: number;
+	outOfStockCount: number;
 }

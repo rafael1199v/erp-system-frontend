@@ -1,36 +1,35 @@
-import type { MovementType } from "@/types/enum";
-import type { CreateMovement, Movement } from "@/types/movement";
+import type { CreateMovement, DocumentType, InventoryAdjustmentRequest, Movement } from "@/types/movement";
 import apiClient from "../apiClient";
 
 export enum MovementApi {
-	Movement = "/inventory/movement",
+	Inventory = "/inventory",
 }
 
-const createMovement = (movement: CreateMovement) => {
-	return apiClient.post<void>({
-		url: `${MovementApi.Movement}`,
+const createMovement = (companyCen: string, movement: CreateMovement) => {
+	return apiClient.post<Movement>({
+		url: `${MovementApi.Inventory}/companies/${encodeURIComponent(companyCen)}/documents`,
 		data: movement,
 	});
 };
 
-const createAdjustment = (movement: CreateMovement) => {
-	return apiClient.post<void>({
-		url: `${MovementApi.Movement}/adjustment`,
-		data: movement,
+const createAdjustment = (companyCen: string, adjustment: InventoryAdjustmentRequest) => {
+	return apiClient.post<Movement>({
+		url: `${MovementApi.Inventory}/companies/${encodeURIComponent(companyCen)}/stock/adjustments`,
+		data: adjustment,
 	});
 };
 
-const getMovementsByType = (movementType: MovementType, companyId: string) => {
-	console.log(`${MovementApi.Movement}/${companyId}?movementType=${movementType}`);
+const getMovementsByType = (documentType: DocumentType, companyCen: string) => {
+	const params = new URLSearchParams({ documentType });
 
 	return apiClient.get<Movement[]>({
-		url: `${MovementApi.Movement}/${companyId}?movementType=${movementType}`,
+		url: `${MovementApi.Inventory}/companies/${encodeURIComponent(companyCen)}/documents?${params.toString()}`,
 	});
 };
 
-const getMovements = (companyId: string) => {
+const getMovements = (companyCen: string) => {
 	return apiClient.get<Movement[]>({
-		url: `${MovementApi.Movement}/${companyId}?movementType=`,
+		url: `${MovementApi.Inventory}/companies/${encodeURIComponent(companyCen)}/documents`,
 	});
 };
 

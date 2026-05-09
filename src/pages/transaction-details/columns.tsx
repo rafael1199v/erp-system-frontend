@@ -1,50 +1,34 @@
 import type { ColumnDef } from "@tanstack/react-table";
-import { TransactionType } from "@/types/enum";
 import type { Transaction } from "@/types/transaction";
+
+const getMovementTypeLabel = (movementType: string) => {
+	if (movementType === "ENTRY") return "Entrada";
+	if (movementType === "EXIT" || movementType === "SALE_EXIT") return "Salida";
+	if (movementType === "ADJUSTMENT") return "Ajuste";
+	return movementType;
+};
 
 export const getColumns = (): ColumnDef<Transaction>[] => [
 	{
-		accessorKey: "transactionType",
-		header: "Tipo de transacción",
-
-		cell: ({ row }) => {
-			const transaction: Transaction = row.original;
-			let formattedType = "Default";
-
-			if (transaction.transactionType === TransactionType.IN) {
-				formattedType = "Entrada";
-			} else if (transaction.transactionType === TransactionType.OUT) {
-				formattedType = "Salida";
-			} else if (transaction.transactionType === TransactionType.ADJUSTMENT) {
-				formattedType = "Ajuste";
-			}
-
-			return <div>{formattedType}</div>;
-		},
+		accessorKey: "movementType",
+		header: "Tipo de movimiento",
+		cell: ({ row }) => <div>{getMovementTypeLabel(row.original.movementType)}</div>,
 	},
 	{
-		accessorKey: "transactionDate",
+		accessorKey: "createdAt",
 		header: "Fecha",
 	},
 	{
 		accessorKey: "quantity",
 		header: "Cantidad",
-
-		cell: ({ row }) => {
-			const transaction: Transaction = row.original;
-			let sign: string = "";
-
-			if (transaction.quantity > 0) {
-				sign = "+";
-			}
-
-			return (
-				<div>
-					{sign}
-					{transaction.quantity}
-				</div>
-			);
-		},
+	},
+	{
+		accessorKey: "warehouseCen",
+		header: "Almacen",
+	},
+	{
+		accessorKey: "documentCen",
+		header: "Documento",
 	},
 	{
 		accessorKey: "reason",

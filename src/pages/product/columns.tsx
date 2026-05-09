@@ -3,37 +3,35 @@
 import type { ColumnDef } from "@tanstack/react-table";
 import type { useNavigate } from "react-router";
 import productService from "@/api/services/productService";
-import { ProductStatus } from "@/types/enum";
+import type { ProductContractStatus } from "@/types/product";
 import { Badge } from "@/ui/badge";
 import { Button } from "@/ui/button";
 
 export interface ProductCatalogRow {
-	productId: number;
-	productName: string;
-	unit: number;
-	currentCost: number;
-	imageUrl: string | null;
-	categoryId: number;
+	productCen: string;
+	sku: string;
+	name: string;
+	description: string | null;
+	categoryCen: string;
 	categoryName: string;
-	statusCode: number;
-	isActive: boolean;
-	companyId: number;
+	unitCen: string;
+	unitName: string;
+	salePrice: number;
+	costPrice: number | null;
+	reorderLevel: number;
+	status: ProductContractStatus;
 }
 
-const getIsActiveBadge = (isActive: boolean) => {
-	if (isActive) {
-		return <Badge variant="success">Activo</Badge>;
-	}
-
-	return <Badge variant="error">Inactivo</Badge>;
-};
-
-const getProductStatusBadge = (statusCode: number) => {
-	if (statusCode === ProductStatus.AVAILABLE) {
+const getProductStatusBadge = (status: ProductContractStatus) => {
+	if (status === "ACTIVE") {
 		return <Badge variant="success">Disponible</Badge>;
 	}
 
-	if (statusCode === ProductStatus.UNAVAILABLE) {
+	if (status === "OUT_OF_STOCK") {
+		return <Badge variant="warning">Sin stock</Badge>;
+	}
+
+	if (status === "INACTIVE") {
 		return <Badge variant="warning">No disponible</Badge>;
 	}
 
@@ -43,13 +41,18 @@ const getProductStatusBadge = (statusCode: number) => {
 export const columns = (
 	navigate: ReturnType<typeof useNavigate>,
 	onRefresh: () => Promise<void>,
+	companyCen: string | null,
 ): ColumnDef<ProductCatalogRow>[] => [
 	{
-		accessorKey: "productId",
+		accessorKey: "productCen",
 		header: "Codigo",
 	},
 	{
-		accessorKey: "productName",
+		accessorKey: "sku",
+		header: "SKU",
+	},
+	{
+		accessorKey: "name",
 		header: "Nombre",
 	},
 	{
@@ -57,26 +60,21 @@ export const columns = (
 		header: "Categoria",
 	},
 	{
-		accessorKey: "unit",
+		accessorKey: "unitName",
 		header: "Unidad",
 	},
 	{
-		accessorKey: "statusCode",
+		accessorKey: "status",
 		header: "Estado Catalogo",
 
 		cell: ({ row }) => {
-			const status = Number(row.getValue("statusCode"));
+			const status = row.getValue("status") as ProductContractStatus;
 			return getProductStatusBadge(status);
 		},
 	},
 	{
-		accessorKey: "isActive",
-		header: "Activo",
-		cell: ({ row }) => getIsActiveBadge(Boolean(row.getValue("isActive"))),
-	},
-	{
-		accessorKey: "totalStock",
-		header: "Total Stock",
+		accessorKey: "salePrice",
+		header: "Precio venta",
 	},
 	{
 		accessorKey: "reorderLevel",
@@ -89,7 +87,7 @@ export const columns = (
 			return (
 				<Button
 					variant="outline"
-					onClick={() => navigate(`/transaction-details/${product.productId}`)}
+					onClick={() => navigate(`/transaction-details/${encodeURIComponent(product.productCen)}`)}
 					className="cursor-pointer"
 				>
 					Ver historial
@@ -107,7 +105,7 @@ export const columns = (
 					variant="outline"
 					className="cursor-pointer"
 					onClick={() => {
-						navigate(`/products/form/${product.productId}`);
+						navigate(`/products/form/${encodeURIComponent(product.productCen)}`);
 					}}
 				>
 					Editar
@@ -122,10 +120,12 @@ export const columns = (
 
 			const handleToggle = async () => {
 				try {
-					if (product.isActive) {
-						await productService.deactivateProduct(product.productId, product.companyId);
+					if (!companyCen) return;
+
+					if (product.status === "ACTIVE") {
+						await productService.deactivateProduct(companyCen, product.productCen);
 					} else {
-						await productService.activateProduct(product.productId, product.companyId);
+						await productService.activateProduct(companyCen, product.productCen);
 					}
 					await onRefresh();
 				} catch (error) {
@@ -135,7 +135,7 @@ export const columns = (
 
 			return (
 				<Button variant="outline" onClick={handleToggle} className="w-full cursor-pointer">
-					{product.isActive ? "Desactivar" : "Activar"}
+					{product.status === "ACTIVE" ? "Desactivar" : "Activar"}
 				</Button>
 			);
 		},

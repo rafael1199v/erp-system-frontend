@@ -12,15 +12,10 @@ import { Button } from "@/ui/button";
 
 function CompanyPage() {
 	const navigate = useNavigate();
-	const { setSelectedCompanyId, setSelectedCompanyName } = useCompanyActions();
+	const { setSelectedCompanyCen, setSelectedCompanyName } = useCompanyActions();
 
 	const [selectedCompany, setSelectedCompany] = useState<string | null>(null);
-	const [companies, setCompanies] = useState<Company[]>([
-		{
-			id: 1,
-			name: "Mock company",
-		},
-	]);
+	const [companies, setCompanies] = useState<Company[]>([]);
 
 	useEffect(() => {
 		const fetchCompanies = async () => {
@@ -45,7 +40,7 @@ function CompanyPage() {
 					<SelectInv
 						options={companies.map((option) => {
 							const selectOption: SelectOption = {
-								key: option.id.toString(),
+								key: option.companyCen,
 								value: option.name,
 							};
 
@@ -60,9 +55,9 @@ function CompanyPage() {
 						className="w-full cursor-pointer"
 						onClick={() => {
 							if (!selectedCompany) return;
-							setSelectedCompanyId(selectedCompany);
+							setSelectedCompanyCen(selectedCompany);
 							setSelectedCompanyName(
-								companies.find((company) => company.id.toString() === selectedCompany)?.name || "Default",
+								companies.find((company) => company.companyCen === selectedCompany)?.name || "Default",
 							);
 							navigate("/analysis");
 						}}

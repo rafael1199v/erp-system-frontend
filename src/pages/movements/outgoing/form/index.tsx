@@ -8,8 +8,7 @@ import movementService from "@/api/services/movementService";
 import productService from "@/api/services/productService";
 import warehouseService from "@/api/services/warehouseService";
 import { Combobox, type ComboboxOption } from "@/components/combobox";
-import { useSelectedCompanyId } from "@/store/companyStore";
-import { MovementStatus, MovementType, TransactionType } from "@/types/enum";
+import { useSelectedCompanyCen } from "@/store/companyStore";
 import type { CreateMovement } from "@/types/movement";
 import { Button } from "@/ui/button";
 import { Field, FieldError, FieldLabel } from "@/ui/field";
@@ -21,17 +20,18 @@ const movementSchema = z.object({
 	products: z
 		.array(
 			z.object({
-				productId: z.string().min(1, "Seleccione un producto"),
-				warehouseId: z.string().min(1, "Seleccione un almacén"),
+				productCen: z.string().min(1, "Seleccione un producto"),
+				warehouseCen: z.string().min(1, "Seleccione un almacen"),
 				quantity: z.string().min(1, "La cantidad debe ser positiva"),
 			}),
 		)
-		.min(1, "Agrega por lo menos un producto para registrar una entrada"),
+		.min(1, "Agrega por lo menos un producto para registrar una salida"),
 });
 
-export default function MovementForm() {
-	const companyId: string = useSelectedCompanyId() || "-1";
+type MovementFormValues = z.infer<typeof movementSchema>;
 
+export default function MovementForm() {
+	const companyCen = useSelectedCompanyCen() || "";
 	const [productOptions, setProductOptions] = useState<ComboboxOption[]>([]);
 	const [warehouseOptions, setWarehouseOptions] = useState<ComboboxOption[]>([]);
 	const nav = useNavigate();
@@ -42,17 +42,11 @@ export default function MovementForm() {
 		register,
 		formState: { errors },
 		trigger,
-	} = useForm<z.infer<typeof movementSchema>>({
+	} = useForm<MovementFormValues>({
 		resolver: zodResolver(movementSchema),
 		defaultValues: {
 			reason: "",
-			products: [
-				{
-					productId: "",
-					warehouseId: "",
-					quantity: "",
-				},
-			],
+			products: [{ productCen: "", warehouseCen: "", quantity: "" }],
 		},
 	});
 
@@ -62,79 +56,69 @@ export default function MovementForm() {
 	});
 
 	useEffect(() => {
-		const fetchWarehouses = async () => {
-			try {
-				const response = await warehouseService.getWarehousesByCompany(companyId);
+		const fetchData = async () => {
+			if (!companyCen) return;
 
-				const warehouseOptionsResponse = response.data.map((warehouse) => {
-					return {
-						value: warehouse.id.toString(),
+			try {
+				const [warehousesResponse, productsResponse] = await Promise.all([
+					warehouseService.getWarehousesByCompany(companyCen),
+					productService.getProductCatalog(companyCen),
+				]);
+
+				setWarehouseOptions(
+					warehousesResponse.data.map((warehouse) => ({
+						value: warehouse.warehouseCen,
 						label: warehouse.name,
-					};
-				});
-
-				setWarehouseOptions(warehouseOptionsResponse);
-				console.log(response.data);
+					})),
+				);
+				setProductOptions(
+					productsResponse.data.map((product) => ({
+						value: product.productCen,
+						label: product.name,
+					})),
+				);
 			} catch (error) {
 				console.error(error);
 			}
 		};
 
-		const fetchProducts = async () => {
-			try {
-				const response = await productService.getProductCatalog(companyId);
-				const productOptionsResponse = response.data.map((product) => {
-					return {
-						value: product.productId.toString(),
-						label: product.productName,
-					};
-				});
+		void fetchData();
+	}, [companyCen]);
 
-				setProductOptions(productOptionsResponse);
+	const onSubmit = async (values: MovementFormValues) => {
+		await trigger("products");
 
-				console.log(response.data);
-			} catch (error) {
-				console.error(error);
-			}
-		};
+		if (!companyCen) {
+			toast.error("Selecciona una compania antes de crear movimientos");
+			return;
+		}
 
-		fetchProducts();
-		fetchWarehouses();
-	}, [companyId]);
-
-	const onSubmit = async (values: z.infer<typeof movementSchema>) => {
-		trigger("products");
-
-		const movement: CreateMovement = {
-			title: values.reason,
-			movementType: MovementType.ISSUE,
-			movementDate: new Date().toISOString().split("T")[0],
-			movementStatus: MovementStatus.DRAW,
-			companyId: parseInt(companyId),
-			transactions: values.products.map((transaction) => {
-				return {
-					quantity: -parseInt(transaction.quantity),
-					reason: values.reason,
-					transactionDate: new Date().toISOString().split("T")[0],
-					transactionType: TransactionType.OUT,
-					productId: parseInt(transaction.productId),
-					warehouseId: parseInt(transaction.warehouseId),
-				};
-			}),
-		};
+		const movements = Array.from(
+			values.products
+				.reduce((warehouseLines, transaction) => {
+					const lines = warehouseLines.get(transaction.warehouseCen) ?? [];
+					lines.push({
+						productCen: transaction.productCen,
+						quantity: Number.parseInt(transaction.quantity, 10),
+					});
+					warehouseLines.set(transaction.warehouseCen, lines);
+					return warehouseLines;
+				}, new Map<string, CreateMovement["lines"]>())
+				.entries(),
+		).map<CreateMovement>(([warehouseCen, lines]) => ({
+			documentType: "EXIT",
+			warehouseCen,
+			reason: values.reason,
+			externalReference: null,
+			lines,
+		}));
 
 		try {
-			await movementService.createMovement(movement);
+			await Promise.all(movements.map((movement) => movementService.createMovement(companyCen, movement)));
 			toast.success("Movimiento de salida creado con exito");
-			// toast(
-			//   <pre className="mt-2 w-[340px] rounded-md bg-slate-950 p-4">
-			//     <code className="text-white">{JSON.stringify(movement, null, 2)}</code>
-			//   </pre>,
-			// );
 			nav("/movements/outgoing");
 		} catch (error) {
 			console.error("Form submission error", error);
-			//toast.error(error.response.data);
 		}
 	};
 
@@ -145,16 +129,16 @@ export default function MovementForm() {
 			<form onSubmit={handleSubmit(onSubmit)} className="w-full flex flex-col gap-4 justify-content items-start">
 				<Field className="w-1/2">
 					<FieldLabel htmlFor="reason">Motivo</FieldLabel>
-					<Input id="reason" placeholder="Motivo de la entrada" type="text" {...register("reason")} />
+					<Input id="reason" placeholder="Motivo de la salida" type="text" {...register("reason")} />
 					<FieldError>{errors.reason?.message}</FieldError>
 				</Field>
 
 				{fields.map((field, index) => (
 					<div className="w-full flex flex-row gap-4 pe-8 pb-8 pt-4 items-center justify-content" key={field.id}>
 						<Field>
-							<FieldLabel htmlFor={`products.${index}.productId`}>Product</FieldLabel>
+							<FieldLabel htmlFor={`products.${index}.productCen`}>Product</FieldLabel>
 							<Controller
-								name={`products.${index}.productId`}
+								name={`products.${index}.productCen`}
 								control={control}
 								render={({ field }) => (
 									<Combobox
@@ -167,12 +151,12 @@ export default function MovementForm() {
 									/>
 								)}
 							/>
-							<FieldError>{errors.products?.[index]?.productId?.message}</FieldError>
+							<FieldError>{errors.products?.[index]?.productCen?.message}</FieldError>
 						</Field>
 						<Field>
-							<FieldLabel htmlFor={`products.${index}.warehouseId`}>Warehouse</FieldLabel>
+							<FieldLabel htmlFor={`products.${index}.warehouseCen`}>Warehouse</FieldLabel>
 							<Controller
-								name={`products.${index}.warehouseId`}
+								name={`products.${index}.warehouseCen`}
 								control={control}
 								render={({ field }) => (
 									<Combobox
@@ -185,7 +169,7 @@ export default function MovementForm() {
 									/>
 								)}
 							/>
-							<FieldError>{errors.products?.[index]?.warehouseId?.message}</FieldError>
+							<FieldError>{errors.products?.[index]?.warehouseCen?.message}</FieldError>
 						</Field>
 						<Field>
 							<FieldLabel htmlFor={`products.${index}.quantity`}>Quantity</FieldLabel>
@@ -206,7 +190,7 @@ export default function MovementForm() {
 							className={`${errors.products?.[index] === undefined ? "self-end" : ""} cursor-pointer`}
 							onClick={() => {
 								remove(index);
-								trigger("products");
+								void trigger("products");
 							}}
 						>
 							Remove
@@ -221,11 +205,7 @@ export default function MovementForm() {
 					variant="contrast"
 					className="w-1/3 cursor-pointer"
 					onClick={() => {
-						append({
-							productId: "",
-							warehouseId: "",
-							quantity: "",
-						});
+						append({ productCen: "", warehouseCen: "", quantity: "" });
 					}}
 				>
 					+ Agregar Movimiento

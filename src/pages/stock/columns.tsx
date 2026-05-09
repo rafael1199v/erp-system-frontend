@@ -1,26 +1,14 @@
 "use client";
 
 import type { ColumnDef } from "@tanstack/react-table";
+import type { StockItem } from "@/types/product";
 import ChangeStockDialog from "./components/change-stock-dialog";
 
-export interface ProductWithWarehouseTableRow {
-	productId: number;
-	productName: string;
-	unit: number;
-	currentCost: number;
-
-	categoryId: number;
-	categoryName: string;
-	statusCode: number;
-
-	warehouseId: number;
-	warehouseName: string;
-	stock: number;
-}
+export type ProductWithWarehouseTableRow = StockItem;
 
 export const getColumns = (onStockUpdated: () => Promise<void>): ColumnDef<ProductWithWarehouseTableRow>[] => [
 	{
-		accessorKey: "productId",
+		accessorKey: "productCen",
 		header: "Code",
 	},
 	{
@@ -28,20 +16,16 @@ export const getColumns = (onStockUpdated: () => Promise<void>): ColumnDef<Produ
 		header: "Product name",
 	},
 	{
-		accessorKey: "unit",
+		accessorKey: "unitName",
 		header: "Unit",
 	},
 	{
-		accessorKey: "categoryName",
-		header: "Category",
+		accessorKey: "availableQuantity",
+		header: "Stock",
 	},
 	{
 		accessorKey: "warehouseName",
 		header: "Warehouse",
-	},
-	{
-		accessorKey: "stock",
-		header: "Stock",
 	},
 	{
 		id: "actions",

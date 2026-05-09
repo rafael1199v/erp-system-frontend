@@ -15,6 +15,7 @@ export enum StorageEnum {
 	Settings = "settings",
 	I18N = "i18nextLng",
 	CompanyId = "selectedCompanyId",
+	CompanyCen = "selectedCompanyCen",
 	CompanyName = "selectedCompanyName",
 	CompanyImage = "selectedCompanyImage",
 }

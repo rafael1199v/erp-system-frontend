@@ -4,16 +4,16 @@ import { createJSONStorage, persist } from "zustand/middleware";
 import { StorageEnum } from "#/enum";
 
 type CompanyStore = {
-	selectedCompanyId: string | null;
+	selectedCompanyCen: string | null;
 	selectedCompanyName: string | null;
 	selectedCompanyImage: string | null;
 
 	actions: {
-		setSelectedCompanyId: (companyId: string) => void;
+		setSelectedCompanyCen: (companyCen: string) => void;
 		setSelectedCompanyName: (companyName: string) => void;
 		setSelectedCompanyImage: (companyImage: string) => void;
 
-		clearSelectedCompanyId: () => void;
+		clearSelectedCompanyCen: () => void;
 		clearSelectedCompanyName: () => void;
 		clearSelectedCompanyImage: () => void;
 
@@ -24,15 +24,15 @@ type CompanyStore = {
 const useCompanyStore = create<CompanyStore>()(
 	persist(
 		(set) => ({
-			selectedCompanyId: null,
+			selectedCompanyCen: null,
 			selectedCompanyName: null,
 			selectedCompanyImage: null,
 			actions: {
-				setSelectedCompanyId: (companyId) => {
-					set({ selectedCompanyId: companyId });
+				setSelectedCompanyCen: (companyCen) => {
+					set({ selectedCompanyCen: companyCen });
 				},
-				clearSelectedCompanyId() {
-					set({ selectedCompanyId: null });
+				clearSelectedCompanyCen() {
+					set({ selectedCompanyCen: null });
 				},
 
 				setSelectedCompanyName: (companyName) => {
@@ -49,7 +49,7 @@ const useCompanyStore = create<CompanyStore>()(
 				},
 
 				clearCompanyData() {
-					set({ selectedCompanyId: null, selectedCompanyName: null, selectedCompanyImage: null });
+					set({ selectedCompanyCen: null, selectedCompanyName: null, selectedCompanyImage: null });
 				},
 			},
 		}),
@@ -57,7 +57,7 @@ const useCompanyStore = create<CompanyStore>()(
 			name: "companyStore",
 			storage: createJSONStorage(() => localStorage),
 			partialize: (state) => ({
-				[StorageEnum.CompanyId]: state.selectedCompanyId,
+				[StorageEnum.CompanyCen]: state.selectedCompanyCen,
 				[StorageEnum.CompanyName]: state.selectedCompanyName,
 				[StorageEnum.CompanyImage]: state.selectedCompanyImage,
 			}),
@@ -65,7 +65,8 @@ const useCompanyStore = create<CompanyStore>()(
 	),
 );
 
-export const useSelectedCompanyId = () => useCompanyStore((state) => state.selectedCompanyId);
+export const useSelectedCompanyCen = () => useCompanyStore((state) => state.selectedCompanyCen);
+export const useSelectedCompanyId = () => useCompanyStore((state) => state.selectedCompanyCen);
 export const useSelectedCompanyName = () => useCompanyStore((state) => state.selectedCompanyName);
 export const useSelectedCompanyImage = () => useCompanyStore((state) => state.selectedCompanyImage);
 

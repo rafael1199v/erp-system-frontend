@@ -1,20 +1,24 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import productService from "@/api/services/productService";
 import { DataTable } from "@/components/data-table";
-import { useSelectedCompanyId } from "@/store/companyStore";
-import type { ProductWithWarehouses } from "@/types/product";
+import { useSelectedCompanyCen } from "@/store/companyStore";
+import type { StockItem } from "@/types/product";
 import { Title } from "@/ui/typography";
-import { mapProductWarehousesToDataRow } from "@/utils/mappers";
 import { getColumns } from "./columns";
 
 export default function ProductPage() {
-	const [stock, setStock] = useState<ProductWithWarehouses[]>([]);
-	const companyId = useSelectedCompanyId();
+	const [stock, setStock] = useState<StockItem[]>([]);
+	const companyCen = useSelectedCompanyCen();
 
 	const fetchStock = useCallback(async () => {
-		const response = await productService.getProductsWithWarehouses(companyId || "-1");
+		if (!companyCen) {
+			setStock([]);
+			return;
+		}
+
+		const response = await productService.getStock(companyCen);
 		setStock(response.data);
-	}, [companyId]);
+	}, [companyCen]);
 
 	useEffect(() => {
 		fetchStock();
@@ -27,7 +31,7 @@ export default function ProductPage() {
 			<Title as="h1">Stock</Title>
 
 			<div className="h-full w-11/12">
-				<DataTable columns={columns} data={mapProductWarehousesToDataRow(stock)} />
+				<DataTable columns={columns} data={stock} />
 			</div>
 		</div>
 	);
