@@ -1,16 +1,17 @@
 import { useQuery } from "@tanstack/react-query";
+import { normalizeCen } from "@/feature/sales/utils/cen";
 import dashboardApi from "../api/dashboardApi";
 import type { TopProductDto } from "../types/dashboard";
 import { extractDashboardApiError } from "./extract-dashboard-api-error";
 
-export const useDashboardTopProducts = (companyId: number | null) => {
-	const normalizedCompanyId = companyId ?? -1;
+export const useDashboardTopProducts = (companyCen: string | null, topN?: number) => {
+	const normalizedCompanyCen = normalizeCen(companyCen);
 	const query = useQuery({
-		queryKey: ["dashboard-top-products", normalizedCompanyId] as const,
+		queryKey: ["dashboard-top-products", normalizedCompanyCen, topN] as const,
 		queryFn: async () => {
-			return (await dashboardApi.getTopProducts(normalizedCompanyId)).data;
+			return (await dashboardApi.getTopProducts(normalizedCompanyCen ?? "", topN)).data;
 		},
-		enabled: normalizedCompanyId > 0,
+		enabled: normalizedCompanyCen !== null,
 	});
 
 	return {

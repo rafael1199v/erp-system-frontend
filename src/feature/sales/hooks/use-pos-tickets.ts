@@ -1,47 +1,56 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import orderApi from "../api/orderApi";
-import type { RestaurantOrder } from "../types/order";
+import type { Ticket } from "../types/order";
+import { normalizeCen } from "../utils/cen";
 
-export const useRestaurantOrders = (companyId: number | null) => {
-	const normalizedCompanyId = companyId ?? -1;
-	const queryKey = ["sales-orders", normalizedCompanyId] as const;
+export const useRestaurantOrders = (companyCen: string | null) => {
+	const normalizedCompanyCen = normalizeCen(companyCen);
+	const queryKey = ["sales-tickets", normalizedCompanyCen] as const;
 	const queryClient = useQueryClient();
 
 	const ordersQuery = useQuery({
 		queryKey,
 		queryFn: async () => {
-			return (await orderApi.getDailyOrders(companyId ?? -1)).data;
+			return (await orderApi.getDailyTickets(normalizedCompanyCen ?? "")).data;
 		},
-		enabled: normalizedCompanyId > 0,
+		enabled: normalizedCompanyCen !== null,
 	});
 
 	const createRestaurantOrderMutation = useMutation({
-		mutationFn: async (targetCompanyId: number) => {
-			await orderApi.createOrder({ companyId: targetCompanyId });
+		mutationFn: async (targetCompanyCen: string) => {
+			await orderApi.createTicket(targetCompanyCen);
 		},
 		onSuccess: () => {
-			//TODO: Invalidar querys al momento de obtener los tickers
-			queryClient.invalidateQueries({ queryKey: ["sales-orders"] });
-			console.log("Ticket creado con exito");
+			queryClient.invalidateQueries({ queryKey: ["sales-tickets"] });
+			queryClient.invalidateQueries({ queryKey: ["dashboard-daily-sales"] });
 		},
 	});
 
-	const assignWaiter = async (targetCompanyId: number, waiterId: number | null, restaurantOrderId: number) => {
-		if (!Number.isInteger(targetCompanyId) || targetCompanyId <= 0 || waiterId === null) {
+	const assignWaiter = async (targetCompanyCen: string, waiterCen: string | null, ticketCen: string) => {
+		const safeCompanyCen = normalizeCen(targetCompanyCen);
+		const safeWaiterCen = normalizeCen(waiterCen);
+		const safeTicketCen = normalizeCen(ticketCen);
+
+		if (!safeCompanyCen || !safeWaiterCen || !safeTicketCen) {
 			return;
 		}
 
-		await orderApi.assignWaiter({ restaurantOrderId, waiterId });
+		await orderApi.assignWaiter(safeCompanyCen, safeTicketCen, { waiterCen: safeWaiterCen });
 		await ordersQuery.refetch();
 	};
 
 	return {
-		orders: ordersQuery.data ?? ([] as RestaurantOrder[]),
+		orders: ordersQuery.data ?? ([] as Ticket[]),
+		tickets: ordersQuery.data ?? ([] as Ticket[]),
 		isLoadingRestaurantOrders: ordersQuery.isLoading,
 		isCreatingRestaurantOrder: createRestaurantOrderMutation.isPending,
-		createRestaurantOrder: async (targetCompanyId: number) => {
-			await createRestaurantOrderMutation.mutateAsync(targetCompanyId);
+		createRestaurantOrder: async (targetCompanyCen: string) => {
+			await createRestaurantOrderMutation.mutateAsync(targetCompanyCen);
+		},
+		createTicket: async (targetCompanyCen: string) => {
+			await createRestaurantOrderMutation.mutateAsync(targetCompanyCen);
 		},
 		assignWaiter,
+		assignTicketWaiter: assignWaiter,
 	};
 };

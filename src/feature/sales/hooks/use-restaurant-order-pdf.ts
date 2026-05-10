@@ -1,17 +1,20 @@
 import { useQuery } from "@tanstack/react-query";
 import orderApi from "../api/orderApi";
+import { normalizeCen } from "../utils/cen";
 
 type useRestaurantOrderPdfParams = {
-	restaurantOrderId: number | null;
+	companyCen: string | null;
+	ticketCen: string | null;
 };
 
-export const useRestaurantOrderPdf = ({ restaurantOrderId }: useRestaurantOrderPdfParams) => {
-	const normalizedOrderId = restaurantOrderId ?? -1;
+export const useRestaurantOrderPdf = ({ companyCen, ticketCen }: useRestaurantOrderPdfParams) => {
+	const normalizedCompanyCen = normalizeCen(companyCen);
+	const normalizedTicketCen = normalizeCen(ticketCen);
 
 	const orderPdfQuery = useQuery({
-		queryKey: ["restaurant-order-pdf"],
+		queryKey: ["sales-ticket-pdf", normalizedCompanyCen, normalizedTicketCen],
 		queryFn: async () => {
-			const response = await orderApi.getOrderPdf(normalizedOrderId);
+			const response = await orderApi.getTicketPdf(normalizedCompanyCen ?? "", normalizedTicketCen ?? "");
 			return response.data;
 		},
 		enabled: false,
