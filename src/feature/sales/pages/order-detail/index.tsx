@@ -26,6 +26,10 @@ const isEditableTicketItem = (item: TicketItem) => {
 	return status === OrderDetailStatus.Created || status === OrderDetailStatus.Preparing;
 };
 
+const isMergeableTicketItem = (item: TicketItem, productCen: string) => {
+	return item.productCen === productCen && normalizeOrderDetailStatus(item.status) === OrderDetailStatus.Created && !item.sentAt;
+};
+
 export default function OrderDetailPage() {
 	const navigate = useNavigate();
 	const { state } = useLocation() as { state: TicketLocationState | null };
@@ -43,8 +47,6 @@ export default function OrderDetailPage() {
 		createTicketItem,
 		updateTicketItem,
 		cancelTicketItem,
-		isUpdatingTicketItem,
-		isCancelingTicketItem,
 		ticketItems,
 		ticketTotals,
 		sendTicketToKds,
@@ -54,7 +56,7 @@ export default function OrderDetailPage() {
 		enabled: hasValidCompany && hasValidTicket,
 	});
 
-	const { resendTicketItem, isResendingOrderDetail } = useResendOrderDetail({
+	const { resendTicketItem } = useResendOrderDetail({
 		companyCen: hasValidCompany ? companyCen : null,
 		ticketCen: hasValidTicket ? ticketCen : null,
 	});
@@ -66,7 +68,9 @@ export default function OrderDetailPage() {
 
 	const [draftQuantities, setDraftQuantities] = useState<Record<string, number>>({});
 	const [notesByItemCen, setNotesByItemCen] = useState<Record<string, string>>({});
+	const [activeItemOrder, setActiveItemOrder] = useState<string[]>([]);
 	const [pendingAddProductCens, setPendingAddProductCens] = useState<Set<string>>(new Set());
+	const [pendingUpdateItemCens, setPendingUpdateItemCens] = useState<Set<string>>(new Set());
 	const [pendingSaveNoteItemCens, setPendingSaveNoteItemCens] = useState<Set<string>>(new Set());
 	const [pendingCancelItemCens, setPendingCancelItemCens] = useState<Set<string>>(new Set());
 	const [pendingResendItemCens, setPendingResendItemCens] = useState<Set<string>>(new Set());
@@ -87,11 +91,36 @@ export default function OrderDetailPage() {
 		return [...products].sort((left, right) => left.name.localeCompare(right.name));
 	}, [products]);
 
-	const activeItems = useMemo(() => {
-		return ticketItems
-			.filter((item) => normalizeOrderDetailStatus(item.status) !== OrderDetailStatus.Canceled)
-			.sort((left, right) => left.productName.localeCompare(right.productName));
+	const rawActiveItems = useMemo(() => {
+		return ticketItems.filter((item) => normalizeOrderDetailStatus(item.status) !== OrderDetailStatus.Canceled);
 	}, [ticketItems]);
+
+	useEffect(() => {
+		setActiveItemOrder((previousOrder) => {
+			const activeItemCens = new Set(rawActiveItems.map((item) => item.ticketItemCen));
+			const nextOrder = previousOrder.filter((ticketItemCen) => activeItemCens.has(ticketItemCen));
+			const orderedItemCens = new Set(nextOrder);
+
+			for (const item of rawActiveItems) {
+				if (!orderedItemCens.has(item.ticketItemCen)) {
+					nextOrder.push(item.ticketItemCen);
+				}
+			}
+
+			return nextOrder;
+		});
+	}, [rawActiveItems]);
+
+	const activeItems = useMemo(() => {
+		const activeItemsByCen = new Map(rawActiveItems.map((item) => [item.ticketItemCen, item]));
+		const orderedItems = activeItemOrder
+			.map((ticketItemCen) => activeItemsByCen.get(ticketItemCen))
+			.filter((item): item is TicketItem => Boolean(item));
+		const orderedItemCens = new Set(orderedItems.map((item) => item.ticketItemCen));
+		const newItems = rawActiveItems.filter((item) => !orderedItemCens.has(item.ticketItemCen));
+
+		return [...orderedItems, ...newItems];
+	}, [activeItemOrder, rawActiveItems]);
 
 	const subtotal = ticketTotals?.subtotal ?? activeItems.reduce((sum, item) => sum + item.quantity * item.unitPrice, 0);
 	const taxAmount = ticketTotals?.taxAmount ?? 0;
@@ -116,6 +145,10 @@ export default function OrderDetailPage() {
 			}
 			return next;
 		});
+	};
+
+	const getItemNotePayload = (item: TicketItem) => {
+		return (notesByItemCen[item.ticketItemCen] ?? item.note ?? "").trim() || null;
 	};
 
 	const validateProduct = (product: SalesCatalogProduct, requestedQuantity: number) => {
@@ -143,24 +176,51 @@ export default function OrderDetailPage() {
 		}
 
 		const requestedQuantity = getDraftQuantity(product.productCen);
-		if (!validateProduct(product, requestedQuantity)) {
+		const mergeTarget = activeItems.find((item) => isMergeableTicketItem(item, product.productCen));
+		const finalQuantity = (mergeTarget?.quantity ?? 0) + requestedQuantity;
+		const quantityToValidate = mergeTarget ? finalQuantity : requestedQuantity;
+
+		if (!validateProduct(product, quantityToValidate)) {
+			return;
+		}
+
+		if (mergeTarget && pendingUpdateItemCens.has(mergeTarget.ticketItemCen)) {
 			return;
 		}
 
 		setPending(setPendingAddProductCens, product.productCen, true);
+		if (mergeTarget) {
+			setPending(setPendingUpdateItemCens, mergeTarget.ticketItemCen, true);
+		}
 		try {
-			await createTicketItem({
-				productCen: product.productCen,
-				quantity: requestedQuantity,
-				note: null,
-			});
-			toast.success(`${product.name} agregado correctamente.`);
+			if (mergeTarget) {
+				await updateTicketItem({
+					ticketItemCen: mergeTarget.ticketItemCen,
+					quantity: finalQuantity,
+					note: getItemNotePayload(mergeTarget),
+				});
+				toast.success(`${product.name} sumado al item pendiente.`);
+			} else {
+				await createTicketItem({
+					productCen: product.productCen,
+					quantity: requestedQuantity,
+					note: null,
+				});
+				toast.success(`${product.name} agregado correctamente.`);
+			}
 		} finally {
+			if (mergeTarget) {
+				setPending(setPendingUpdateItemCens, mergeTarget.ticketItemCen, false);
+			}
 			setPending(setPendingAddProductCens, product.productCen, false);
 		}
 	};
 
 	const updateItemQuantity = async (item: TicketItem, product: SalesCatalogProduct | undefined, delta: 1 | -1) => {
+		if (pendingUpdateItemCens.has(item.ticketItemCen)) {
+			return;
+		}
+
 		if (!isEditableTicketItem(item)) {
 			toast.error("Este item no se puede editar porque ya fue enviado o finalizado.");
 			return;
@@ -177,14 +237,23 @@ export default function OrderDetailPage() {
 			return;
 		}
 
-		await updateTicketItem({
-			ticketItemCen: item.ticketItemCen,
-			quantity: nextQuantity,
-			note: notesByItemCen[item.ticketItemCen]?.trim() || null,
-		});
+		setPending(setPendingUpdateItemCens, item.ticketItemCen, true);
+		try {
+			await updateTicketItem({
+				ticketItemCen: item.ticketItemCen,
+				quantity: nextQuantity,
+				note: getItemNotePayload(item),
+			});
+		} finally {
+			setPending(setPendingUpdateItemCens, item.ticketItemCen, false);
+		}
 	};
 
 	const handleCancelItem = async (item: TicketItem) => {
+		if (pendingCancelItemCens.has(item.ticketItemCen)) {
+			return;
+		}
+
 		if (!canCancelFromPos(item.status)) {
 			toast.error("Solo se pueden cancelar items en estado Pendiente.");
 			return;
@@ -205,6 +274,10 @@ export default function OrderDetailPage() {
 	};
 
 	const handleSaveNote = async (item: TicketItem) => {
+		if (pendingUpdateItemCens.has(item.ticketItemCen) || pendingSaveNoteItemCens.has(item.ticketItemCen)) {
+			return;
+		}
+
 		if (!isEditableTicketItem(item)) {
 			toast.error("Este item no se puede editar porque ya fue enviado o finalizado.");
 			return;
@@ -215,7 +288,7 @@ export default function OrderDetailPage() {
 			await updateTicketItem({
 				ticketItemCen: item.ticketItemCen,
 				quantity: item.quantity,
-				note: notesByItemCen[item.ticketItemCen]?.trim() || null,
+				note: getItemNotePayload(item),
 			});
 			toast.success(`Nota guardada para ${item.productName}.`);
 		} finally {
@@ -224,6 +297,10 @@ export default function OrderDetailPage() {
 	};
 
 	const handleResendItem = async (item: TicketItem) => {
+		if (pendingResendItemCens.has(item.ticketItemCen)) {
+			return;
+		}
+
 		if (!item.sentAt || normalizeOrderDetailStatus(item.status) === OrderDetailStatus.Canceled) {
 			toast.error("Solo se pueden reenviar items enviados que no esten cancelados.");
 			return;
@@ -348,6 +425,7 @@ export default function OrderDetailPage() {
 									{activeItems.map((item) => {
 										const product = products.find((candidate) => candidate.productCen === item.productCen);
 										const itemSubtotal = item.quantity * item.unitPrice;
+										const isUpdatePending = pendingUpdateItemCens.has(item.ticketItemCen);
 
 										return (
 											<OrderDetailItemCard
@@ -359,9 +437,9 @@ export default function OrderDetailPage() {
 												isEditable={isEditableTicketItem(item)}
 												canCancel={canCancelFromPos(item.status)}
 												canResend={Boolean(item.sentAt) && normalizeOrderDetailStatus(item.status) !== OrderDetailStatus.Canceled}
-												isUpdatingOrderDetail={isUpdatingTicketItem}
-												isCancelingOrderDetail={isCancelingTicketItem}
-												isResendingOrderDetail={isResendingOrderDetail}
+												isUpdatingOrderDetail={isUpdatePending}
+												isCancelingOrderDetail={pendingCancelItemCens.has(item.ticketItemCen)}
+												isResendingOrderDetail={pendingResendItemCens.has(item.ticketItemCen)}
 												isCancelPending={pendingCancelItemCens.has(item.ticketItemCen)}
 												isResendPending={pendingResendItemCens.has(item.ticketItemCen)}
 												isSaveNotePending={pendingSaveNoteItemCens.has(item.ticketItemCen)}
