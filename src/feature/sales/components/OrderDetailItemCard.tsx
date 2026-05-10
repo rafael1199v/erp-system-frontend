@@ -3,12 +3,12 @@ import { Badge } from "@/ui/badge";
 import { Button } from "@/ui/button";
 import { Textarea } from "@/ui/textarea";
 import { fCurrency } from "@/utils/format-number";
-import type { AvailableOrderProduct, OrderItem } from "../types/order-detail";
+import type { SalesCatalogProduct, TicketItem } from "../types/order-detail";
 import ResendCountBadge from "./ResendCountBadge";
 
 type OrderDetailItemCardProps = {
-	item: OrderItem;
-	product?: AvailableOrderProduct;
+	item: TicketItem;
+	product?: SalesCatalogProduct;
 	statusLabel: string;
 	itemSubtotal: number;
 	isEditable: boolean;
@@ -53,7 +53,7 @@ export default function OrderDetailItemCard({
 		<div className="space-y-3 rounded-xl border bg-muted/10 p-4">
 			<div className="flex flex-wrap items-center justify-between gap-2">
 				<div>
-					<p className="font-medium text-text-primary">{item.name}</p>
+					<p className="font-medium text-text-primary">{item.productName}</p>
 					<p className="text-sm text-muted-foreground">
 						{item.sentAt ? `Enviado a las ${new Date(item.sentAt).toLocaleTimeString()}` : "Sin enviar"}
 					</p>
@@ -86,7 +86,7 @@ export default function OrderDetailItemCard({
 				<Button
 					variant="destructive"
 					size="sm"
-					disabled={!item.restaurantOrderDetailId || !canCancel || isUpdatingOrderDetail || isCancelingOrderDetail}
+					disabled={!item.ticketItemCen || !canCancel || isUpdatingOrderDetail || isCancelingOrderDetail}
 					onClick={onCancelItem}
 				>
 					{isCancelPending ? "Cancelando..." : "Cancelar item"}
@@ -94,7 +94,7 @@ export default function OrderDetailItemCard({
 				<Button
 					variant="secondary"
 					size="sm"
-					disabled={!item.restaurantOrderDetailId || !canResend || isResendingOrderDetail || isResendPending}
+					disabled={!item.ticketItemCen || !canResend || isResendingOrderDetail || isResendPending}
 					onClick={onResendItem}
 				>
 					<RotateCcw className="size-4" />
@@ -120,7 +120,7 @@ export default function OrderDetailItemCard({
 					<Button
 						variant="secondary"
 						size="sm"
-						disabled={!item.restaurantOrderDetailId || !isEditable || isSaveNotePending || isCancelingOrderDetail}
+						disabled={!item.ticketItemCen || !isEditable || isSaveNotePending || isCancelingOrderDetail}
 						onClick={onSaveNote}
 					>
 						{isSaveNotePending ? "Guardando..." : "Guardar nota"}

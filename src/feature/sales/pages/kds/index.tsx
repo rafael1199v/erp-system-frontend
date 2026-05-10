@@ -1,7 +1,7 @@
 import { CircleAlert, RefreshCw } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { useSelectedCompanyCen, useSelectedCompanyId } from "@/store/companyStore";
+import { useSelectedCompanyCen } from "@/store/companyStore";
 import { Alert, AlertDescription, AlertTitle } from "@/ui/alert";
 import { Badge } from "@/ui/badge";
 import { Button } from "@/ui/button";
@@ -10,15 +10,12 @@ import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrig
 import { Title } from "@/ui/typography";
 import KdsTeamSection from "../../components/KdsTeamSection";
 import { useKds } from "../../hooks/use-kds";
+import type { KdsItemStatus } from "../../types/kds";
 
 export default function KdsPage() {
-	const selectedCompanyId = useSelectedCompanyId();
 	const selectedCompanyCen = useSelectedCompanyCen();
-	const companyCen = selectedCompanyCen ?? "-1";
-
-	const companyId = Number.parseInt(selectedCompanyId ?? "", 10);
-	const hasValidCompany = Number.isInteger(companyId) && companyId > 0;
-	const hasValidCompanyCen = companyCen.trim() != "";
+	const companyCen = selectedCompanyCen ?? "";
+	const hasValidCompanyCen = companyCen.trim() !== "";
 
 	const [hideFinishedItems, setHideFinishedItems] = useState(true);
 	const [selectedTeamCen, setSelectedTeamCen] = useState<string | null>(null);
@@ -53,9 +50,9 @@ export default function KdsPage() {
 		toast.success("Informacion KDS actualizada correctamente.");
 	};
 
-	const handleAdvanceStatus = async (restaurantOrderDetailId: number, nextStatusId: number) => {
+	const handleAdvanceStatus = async (ticketItemCen: string, nextStatus: KdsItemStatus) => {
 		try {
-			await updateItemStatus({ restaurantOrderDetailId, newStatusId: nextStatusId });
+			await updateItemStatus({ ticketItemCen, status: nextStatus });
 			toast.success("Estado del item actualizado correctamente.");
 		} catch {
 			toast.error("No se pudo actualizar el estado del item. Intenta nuevamente.");
@@ -111,7 +108,7 @@ export default function KdsPage() {
 				</Alert>
 			) : null}
 
-			{hasValidCompany && isLoadingTeams ? (
+			{hasValidCompanyCen && isLoadingTeams ? (
 				<p className="text-sm text-muted-foreground">Cargando equipos KDS...</p>
 			) : null}
 

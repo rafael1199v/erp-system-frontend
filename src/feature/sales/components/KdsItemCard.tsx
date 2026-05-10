@@ -2,17 +2,17 @@ import { Badge } from "@/ui/badge";
 import { Button } from "@/ui/button";
 import { Card, CardContent } from "@/ui/card";
 import { canAdvanceKdsStatus, getNextKdsStatus, getOrderDetailStatusLabel, OrderDetailStatus } from "../enums/kds";
-import type { KdsTeamItem } from "../types/kds";
+import type { KdsItemStatus, KdsTeamItem } from "../types/kds";
 import ResendCountBadge from "./ResendCountBadge";
 
 type KdsItemCardProps = {
 	item: KdsTeamItem;
-	onAdvanceStatus: (restaurantOrderDetailId: number, nextStatusId: number) => Promise<void>;
+	onAdvanceStatus: (ticketItemCen: string, nextStatus: KdsItemStatus) => Promise<void>;
 	isUpdatingStatus: boolean;
 };
 
-const getStatusVariant = (statusId: number) => {
-	switch (statusId) {
+const getStatusVariant = (status: string | undefined | null) => {
+	switch ((status ?? "").trim().toLowerCase()) {
 		case OrderDetailStatus.Created:
 			return "info" as const;
 		case OrderDetailStatus.Preparing:
@@ -28,8 +28,8 @@ const getStatusVariant = (statusId: number) => {
 
 export default function KdsItemCard({ item, onAdvanceStatus, isUpdatingStatus }: KdsItemCardProps) {
 	const hasNote = Boolean(item.note?.trim());
-	const nextStatus = getNextKdsStatus(item.orderItemStatusId);
-	const canAdvance = canAdvanceKdsStatus(item.orderItemStatusId) && nextStatus !== null;
+	const nextStatus = getNextKdsStatus(item.status);
+	const canAdvance = canAdvanceKdsStatus(item.status) && nextStatus !== null;
 	const actionLabel =
 		nextStatus === OrderDetailStatus.Preparing
 			? "Iniciar preparacion"
@@ -44,8 +44,8 @@ export default function KdsItemCard({ item, onAdvanceStatus, isUpdatingStatus }:
 					<div>
 						<p className="font-medium text-text-primary">{item.productName}</p>
 					</div>
-					<Badge variant={getStatusVariant(item.orderItemStatusId)}>
-						{getOrderDetailStatusLabel(item.orderItemStatusId, item.orderItemStatus)}
+					<Badge variant={getStatusVariant(item.status)}>
+						{getOrderDetailStatusLabel(item.status)}
 					</Badge>
 				</div>
 
@@ -68,7 +68,7 @@ export default function KdsItemCard({ item, onAdvanceStatus, isUpdatingStatus }:
 									return;
 								}
 
-								void onAdvanceStatus(item.restaurantOrderDetailId, nextStatus);
+								void onAdvanceStatus(item.ticketItemCen, nextStatus);
 							}}
 							disabled={isUpdatingStatus}
 						>

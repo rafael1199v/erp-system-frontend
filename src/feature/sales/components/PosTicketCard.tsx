@@ -6,21 +6,21 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/ui/select";
 import { Text } from "@/ui/typography";
 import { canCancelOrder, getOrderStatusBadgeVariant, getOrderStatusLabel, isOrderOpen } from "../enums/order";
-import type { RestaurantOrder, Waiter } from "../types/order";
+import type { Ticket as PosTicket, Waiter } from "../types/order";
 
 type PosTicketCardProps = {
-	restaurantOrder: RestaurantOrder;
+	ticket: PosTicket;
 	waiters: Waiter[];
 	isLoadingWaiters: boolean;
-	onAssignWaiter: (orderId: number, waiterId: number | null) => void;
-	onTakeOrder: (order: RestaurantOrder) => void;
-	onContinueToCheckout: (order: RestaurantOrder) => void;
-	onCancelOrder: (order: RestaurantOrder) => void;
+	onAssignWaiter: (ticketCen: string, waiterCen: string | null) => void;
+	onTakeOrder: (ticket: PosTicket) => void;
+	onContinueToCheckout: (ticket: PosTicket) => void;
+	onCancelOrder: (ticket: PosTicket) => void;
 	isCancelingOrder: boolean;
 };
 
 export default function PosTicketCard({
-	restaurantOrder,
+	ticket,
 	waiters,
 	isLoadingWaiters,
 	onAssignWaiter,
@@ -29,9 +29,9 @@ export default function PosTicketCard({
 	onCancelOrder,
 	isCancelingOrder,
 }: PosTicketCardProps) {
-	const assignedWaiter = waiters.find((waiter) => waiter.id === restaurantOrder.waiterId);
-	const orderIsOpen = isOrderOpen(restaurantOrder.orderStatusId);
-	const allowCancel = canCancelOrder(restaurantOrder.orderStatusId);
+	const assignedWaiter = waiters.find((waiter) => waiter.waiterCen === ticket.waiterCen);
+	const orderIsOpen = isOrderOpen(ticket.status);
+	const allowCancel = canCancelOrder(ticket.status);
 
 	return (
 		<Card className="gap-4 border-dashed bg-background/80">
@@ -40,12 +40,12 @@ export default function PosTicketCard({
 					<div className="space-y-1">
 						<CardTitle className="flex items-center gap-2 text-lg">
 							<Ticket className="size-4 text-primary" />
-							<span>Ticket #{restaurantOrder.dailyNumber}</span>
+							<span>Ticket #{ticket.dailyNumber}</span>
 						</CardTitle>
 						<CardDescription>Cuenta abierta lista para registrar pedidos antes de cobrar.</CardDescription>
 					</div>
-					<Badge variant={getOrderStatusBadgeVariant(restaurantOrder.orderStatusId)}>
-						{getOrderStatusLabel(restaurantOrder.orderStatusId)}
+					<Badge variant={getOrderStatusBadgeVariant(ticket.status)}>
+						{getOrderStatusLabel(ticket.status)}
 					</Badge>
 				</div>
 			</CardHeader>
@@ -58,7 +58,7 @@ export default function PosTicketCard({
 							Fecha
 						</Text>
 						<p className="mt-2 text-sm font-medium text-text-primary">
-							{format(new Date(restaurantOrder.orderDatetime), "dd/MM/yyyy HH:mm")}
+							{format(new Date(ticket.createdAt), "dd/MM/yyyy HH:mm")}
 						</p>
 					</div>
 
@@ -74,8 +74,8 @@ export default function PosTicketCard({
 				<div className="space-y-2">
 					<Text variant="subTitle2">Seleccionar mesero</Text>
 					<Select
-						value={restaurantOrder.waiterId ? String(restaurantOrder.waiterId) : undefined}
-						onValueChange={(value) => onAssignWaiter(restaurantOrder.restaurantOrderId, Number(value))}
+						value={ticket.waiterCen ?? undefined}
+						onValueChange={(value) => onAssignWaiter(ticket.ticketCen, value)}
 						disabled={isLoadingWaiters || waiters.length === 0 || !orderIsOpen}
 					>
 						<SelectTrigger className="w-full">
@@ -83,7 +83,7 @@ export default function PosTicketCard({
 						</SelectTrigger>
 						<SelectContent>
 							{waiters.map((waiter) => (
-								<SelectItem key={waiter.id} value={String(waiter.id)}>
+								<SelectItem key={waiter.waiterCen} value={waiter.waiterCen}>
 									{waiter.name}
 								</SelectItem>
 							))}
@@ -94,14 +94,14 @@ export default function PosTicketCard({
 
 			<CardFooter className="justify-end gap-2">
 				{allowCancel ? (
-					<Button variant="destructive" onClick={() => onCancelOrder(restaurantOrder)} disabled={isCancelingOrder}>
+					<Button variant="destructive" onClick={() => onCancelOrder(ticket)} disabled={isCancelingOrder}>
 						{isCancelingOrder ? "Cancelando..." : "Cancelar"}
 					</Button>
 				) : null}
-				<Button variant="secondary" disabled={!orderIsOpen} onClick={() => onTakeOrder(restaurantOrder)}>
+				<Button variant="secondary" disabled={!orderIsOpen} onClick={() => onTakeOrder(ticket)}>
 					Tomar pedido
 				</Button>
-				<Button variant="outline" disabled={!orderIsOpen} onClick={() => onContinueToCheckout(restaurantOrder)}>
+				<Button variant="outline" disabled={!orderIsOpen || !ticket.waiterCen} onClick={() => onContinueToCheckout(ticket)}>
 					Continuar a cobro
 				</Button>
 			</CardFooter>
