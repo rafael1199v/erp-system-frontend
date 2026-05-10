@@ -28,10 +28,10 @@ export function getFrontendDashboardRoutes(): RouteObject[] {
 		{
 			path: "sales",
 			children: [
-				{ index: true, element: <Navigate to="orders" replace /> },
-				{ path: "orders", element: <OrderPage /> },
-				{ path: "orders/:restaurantOrderId", element: <OrderDetailPage /> },
-				{ path: "orders/:restaurantOrderId/checkout", element: <CheckoutPage /> },
+				{ index: true, element: <Navigate to="tickets" replace /> },
+				{ path: "tickets", element: <OrderPage /> },
+				{ path: "tickets/:ticketCen", element: <OrderDetailPage /> },
+				{ path: "tickets/:ticketCen/checkout", element: <CheckoutPage /> },
 				{ path: "tax", element: <TaxPage /> },
 				{ path: "kds", element: <KdsPage /> },
 			],

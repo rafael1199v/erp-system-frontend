@@ -58,7 +58,7 @@ export const frontendNavData: NavProps["data"] = [
 		items: [
 			{
 				title: "POS",
-				path: "sales/orders",
+				path: "sales/tickets",
 				icon: <Icon icon="local:ic-workbench" size="24" />,
 			},
 			{
