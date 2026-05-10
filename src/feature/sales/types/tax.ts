@@ -1,4 +1,8 @@
 export interface UpdateGlobalTaxRequest {
-	companyId: number;
+	globalTaxPercentage: number;
+}
+
+export interface TaxConfiguration {
+	companyCen: string;
 	globalTaxPercentage: number;
 }

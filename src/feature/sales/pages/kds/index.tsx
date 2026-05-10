@@ -1,7 +1,7 @@
 import { CircleAlert, RefreshCw } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { useSelectedCompanyId } from "@/store/companyStore";
+import { useSelectedCompanyCen, useSelectedCompanyId } from "@/store/companyStore";
 import { Alert, AlertDescription, AlertTitle } from "@/ui/alert";
 import { Badge } from "@/ui/badge";
 import { Button } from "@/ui/button";
@@ -13,10 +13,15 @@ import { useKds } from "../../hooks/use-kds";
 
 export default function KdsPage() {
 	const selectedCompanyId = useSelectedCompanyId();
+	const selectedCompanyCen = useSelectedCompanyCen();
+	const companyCen = selectedCompanyCen ?? "-1";
+
 	const companyId = Number.parseInt(selectedCompanyId ?? "", 10);
 	const hasValidCompany = Number.isInteger(companyId) && companyId > 0;
+	const hasValidCompanyCen = companyCen.trim() != "";
+
 	const [hideFinishedItems, setHideFinishedItems] = useState(true);
-	const [selectedTeamId, setSelectedTeamId] = useState<number | null>(null);
+	const [selectedTeamCen, setSelectedTeamCen] = useState<string | null>(null);
 
 	const {
 		teams,
@@ -29,18 +34,18 @@ export default function KdsPage() {
 		refreshAll,
 		isUpdatingItemStatus,
 		updateItemStatus,
-	} = useKds(hasValidCompany ? companyId : null);
+	} = useKds(hasValidCompanyCen ? companyCen : null);
 
 	useEffect(() => {
-		if (teams.length === 0 || selectedTeamId !== null) {
+		if (teams.length === 0 || selectedTeamCen !== null) {
 			return;
 		}
 
-		setSelectedTeamId(teams[0].id);
-	}, [selectedTeamId, teams]);
+		setSelectedTeamCen(teams[0].teamCen);
+	}, [selectedTeamCen, teams]);
 
 	const handleRefresh = async () => {
-		if (!hasValidCompany) {
+		if (!hasValidCompanyCen) {
 			return;
 		}
 
@@ -75,18 +80,18 @@ export default function KdsPage() {
 					<Button
 						variant="outline"
 						onClick={() => setHideFinishedItems((previous) => !previous)}
-						disabled={!hasValidCompany}
+						disabled={!hasValidCompanyCen}
 					>
 						{hideFinishedItems ? "Mostrar cancelados y listos" : "Ocultar cancelados y listos"}
 					</Button>
-					<Button onClick={() => void handleRefresh()} disabled={!hasValidCompany || isRefreshingAll}>
+					<Button onClick={() => void handleRefresh()} disabled={!hasValidCompanyCen || isRefreshingAll}>
 						<RefreshCw className="size-4" />
 						{isRefreshingAll ? "Refrescando..." : "Refrescar"}
 					</Button>
 				</div>
 			</div>
 
-			{!hasValidCompany ? (
+			{!hasValidCompanyCen ? (
 				<Alert>
 					<CircleAlert className="size-4" />
 					<AlertTitle>Compania requerida</AlertTitle>
@@ -96,7 +101,7 @@ export default function KdsPage() {
 				</Alert>
 			) : null}
 
-			{hasValidCompany && hasTeamsError ? (
+			{hasValidCompanyCen && hasTeamsError ? (
 				<Alert>
 					<CircleAlert className="size-4" />
 					<AlertTitle>Error al cargar equipos KDS</AlertTitle>
@@ -110,7 +115,7 @@ export default function KdsPage() {
 				<p className="text-sm text-muted-foreground">Cargando equipos KDS...</p>
 			) : null}
 
-			{hasValidCompany && !isLoadingTeams && teams.length === 0 ? (
+			{hasValidCompanyCen && !isLoadingTeams && teams.length === 0 ? (
 				<Card>
 					<CardContent>
 						<div className="rounded-xl border border-dashed bg-muted/20 px-6 py-10 text-center">
@@ -123,8 +128,8 @@ export default function KdsPage() {
 				</Card>
 			) : null}
 
-			{hasValidCompany && !isLoadingTeams && teams.length > 0 && selectedTeamId !== null ? (
-				<Select onValueChange={(value) => setSelectedTeamId(Number(value))} defaultValue={selectedTeamId.toString()}>
+			{hasValidCompanyCen && !isLoadingTeams && teams.length > 0 && selectedTeamCen !== null ? (
+				<Select onValueChange={(value) => setSelectedTeamCen(value)} defaultValue={selectedTeamCen}>
 					<SelectTrigger className="w-1/6 self-start">
 						<SelectValue placeholder="Seleccione un equipo" />
 					</SelectTrigger>
@@ -132,7 +137,7 @@ export default function KdsPage() {
 						<SelectGroup>
 							<SelectLabel>Equipos disponibles</SelectLabel>
 							{teams.map((team) => (
-								<SelectItem value={team.id.toString()} key={team.id}>
+								<SelectItem value={team.teamCen} key={team.teamCen}>
 									{team.name}
 								</SelectItem>
 							))}
@@ -141,17 +146,17 @@ export default function KdsPage() {
 				</Select>
 			) : null}
 
-			{hasValidCompany && teams.length > 0 && selectedTeamId !== null ? (
+			{hasValidCompanyCen && teams.length > 0 && selectedTeamCen !== null ? (
 				<div className="flex flex-col gap-4">
 					{teams
-						.filter((team) => team.id === selectedTeamId)
+						.filter((team) => team.teamCen === selectedTeamCen)
 						.map((team) => (
 							<KdsTeamSection
-								key={team.id}
+								key={team.teamCen}
 								team={team}
-								items={itemsByTeamId[team.id] ?? []}
-								isLoadingItems={isLoadingItemsByTeamId[team.id] ?? false}
-								hasItemsError={hasItemsErrorByTeamId[team.id] ?? false}
+								items={itemsByTeamId[team.teamCen] ?? []}
+								isLoadingItems={isLoadingItemsByTeamId[team.teamCen] ?? false}
+								hasItemsError={hasItemsErrorByTeamId[team.teamCen] ?? false}
 								hideFinishedItems={hideFinishedItems}
 								isUpdatingStatus={isUpdatingItemStatus}
 								onAdvanceStatus={handleAdvanceStatus}

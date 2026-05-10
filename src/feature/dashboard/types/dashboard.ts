@@ -7,25 +7,45 @@ export type DailySalesSummaryDto = {
 };
 
 export type TopProductDto = {
-	productId: number;
+	productCen?: string | null;
 	productName: string;
 	totalQuantity: number;
-	categoryId: number;
-	sellPrice: number;
+	categoryCen?: string | null;
+	categoryName?: string | null;
+	salePrice: number;
 };
 
 export type KdsStatusCountersDto = {
-	pendingCount: number;
-	preparingCount: number;
-	readyCount: number;
+	pendingCount?: number;
+	preparingCount?: number;
+	readyCount?: number;
+	deliveredCount?: number;
+	canceledCount?: number;
+	[key: string]: number | undefined;
 };
 
-export type LowStockState = "OutOfStock" | "LowStock";
+export type InventoryDashboardDto = {
+	companyCen: string;
+	totalProducts: number;
+	totalStockQuantity: number;
+	lowStockCount: number;
+	outOfStockCount: number;
+};
 
-export type LowStockProductDto = {
-	productId: number;
+export type InventoryStockItemDto = {
+	productCen: string;
 	productName: string;
-	totalStock: number;
+	warehouseCen: string;
+	warehouseName: string;
+	availableQuantity: number;
+	reservedQuantity: number;
+	unitName: string;
 	reorderLevel: number;
-	stockState: LowStockState | string;
+	isLowStock: boolean;
 };
+
+export type CriticalStockProductDto = InventoryStockItemDto & {
+	stockState: "OUT_OF_STOCK" | "LOW_STOCK";
+};
+
+export type LowStockProductDto = CriticalStockProductDto;

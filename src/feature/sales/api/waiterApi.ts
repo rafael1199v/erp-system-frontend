@@ -2,12 +2,12 @@ import apiClient from "@/api/apiClient";
 import type { Waiter } from "../types/order";
 
 export enum WaiterApi {
-	Waiter = "/sales/waiter",
+	Sales = "/sales",
 }
 
-const getWaiters = (companyId: number) => {
+const getWaiters = (companyCen: string) => {
 	return apiClient.get<Waiter[]>({
-		url: `${WaiterApi.Waiter}/${companyId}`,
+		url: `${WaiterApi.Sales}/companies/${encodeURIComponent(companyCen)}/waiters`,
 	});
 };
 

@@ -1,52 +1,57 @@
-import type { RestaurantOrder } from "./order";
+import type { TicketLocationState } from "./order";
 
-export type AvailableOrderProduct = {
-	productId: number;
+export type TicketItemStatus = "created" | "preparing" | "delivered" | "canceled" | "cancelled" | string;
+
+export type SalesCatalogProduct = {
+	productCen: string;
 	name: string;
-	sellPrice: number;
-	availableStock: number;
+	categoryCen: string;
+	categoryName: string;
+	salePrice: number;
+	availableQuantity: number;
 	isAvailable: boolean;
-	productStatus: string;
+	stationCode?: string | null;
 };
 
-export type CreateOrderDetailRequest = {
-	restaurantOrderId: number;
-	productId: number;
-	note?: string | null;
+export type SalesCatalogProductFilters = {
+	search?: string;
+	categoryCen?: string;
+	warehouseCen?: string;
+	onlyAvailable?: boolean;
+	page?: number;
+	pageSize?: number;
+};
+
+export type CreateTicketItemRequest = {
+	productCen: string;
 	quantity: number;
-	createdAt?: string | null;
+	note?: string | null;
 };
 
-export type UpdateOrderDetailQuantityRequest = {
-	restaurantOrderDetailId: number;
+export type UpdateTicketItemRequest = {
 	quantity: number;
 	note?: string | null;
 };
 
-export type UpdateOrderDetailStatusRequest = {
-	restaurantOrderDetailId: number;
-	newStatusId: number;
+export type UpdateTicketItemStatusRequest = {
+	ticketItemCen: string;
+	status: string;
 };
 
-export type CreateOrderDetailResponse = {
-	restaurantOrderDetailId: number;
-};
-
-export type ProductDraftQuantity = Record<number, number>;
-
-export type OrderItem = {
-	productId: number;
-	name: string;
+export type TicketItem = {
+	ticketItemCen: string;
+	productCen: string;
+	productName: string;
+	quantity: number;
 	unitPrice: number;
-	quantity: number;
 	note: string | null;
-	restaurantOrderDetailId: number | null;
-	sentAt: string | null;
-	restaurantOrderStatusId: number;
-	restaurantOrderStatus: string;
+	status: TicketItemStatus;
+	sentAt?: string | null;
 	resendCount: number;
 };
 
-export type OrderLocationState = {
-	restaurantOrder?: RestaurantOrder;
-};
+export type ProductDraftQuantity = Record<string, number>;
+
+export type TicketItemsByCen = Map<string, TicketItem>;
+
+export type OrderLocationState = TicketLocationState;

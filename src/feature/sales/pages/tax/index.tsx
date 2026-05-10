@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { useSelectedCompanyId } from "@/store/companyStore";
+import { useSelectedCompanyCen  } from "@/store/companyStore";
 import { Title } from "@/ui/typography";
 import TaxSettingsForm from "../../components/TaxSettingsForm";
 import { useTax } from "../../hooks/use-tax";
@@ -8,13 +8,13 @@ import { useUpdateTax } from "../../hooks/use-update-tax";
 import { parseTaxPercentage } from "../../utils/saleUtils";
 
 export default function TaxPage() {
-	const selectedCompanyId = useSelectedCompanyId();
-	const companyId = Number.parseInt(selectedCompanyId ?? "", 10);
-	const hasValidCompany = Number.isInteger(companyId) && companyId > 0;
+	const selectedCompanyCen = useSelectedCompanyCen();
+	const companyCen =selectedCompanyCen ?? "";
+	const hasValidCompany = companyCen.trim() !== "";
 
 	const [taxPercentageInput, setTaxPercentageInput] = useState<string>("");
 
-	const taxQuery = useTax(hasValidCompany ? companyId : null);
+	const taxQuery = useTax(hasValidCompany ? companyCen : null);
 	const updateTaxMutation = useUpdateTax();
 
 	useEffect(() => {
@@ -22,7 +22,7 @@ export default function TaxPage() {
 			return;
 		}
 
-		setTaxPercentageInput(String(taxQuery.data));
+		setTaxPercentageInput(String(taxQuery.data.globalTaxPercentage));
 	}, [taxQuery.data]);
 
 	const handleUpdateTax = async () => {
@@ -38,7 +38,7 @@ export default function TaxPage() {
 		}
 
 		await updateTaxMutation.mutateAsync({
-			companyId,
+			companyCen: companyCen,
 			globalTaxPercentage: parsedTax,
 		});
 

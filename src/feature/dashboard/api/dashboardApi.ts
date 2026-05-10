@@ -2,24 +2,31 @@ import apiClient from "@/api/apiClient";
 import type { DailySalesSummaryDto, KdsStatusCountersDto, TopProductDto } from "../types/dashboard";
 
 export enum SalesDashboardApi {
-	Dashboard = "/sales/dashboard",
+	Sales = "/sales",
 }
 
-const getDailySales = (companyId: number) => {
+const companyDashboardUrl = (companyCen: string) =>
+	`${SalesDashboardApi.Sales}/companies/${encodeURIComponent(companyCen)}/dashboard`;
+
+const getDailySales = (companyCen: string) => {
 	return apiClient.get<DailySalesSummaryDto>({
-		url: `${SalesDashboardApi.Dashboard}/${companyId}/daily-sales`,
+		url: `${companyDashboardUrl(companyCen)}/daily-sales`,
 	});
 };
 
-const getTopProducts = (companyId: number) => {
+const getTopProducts = (companyCen: string, topN?: number) => {
+	const params = new URLSearchParams();
+	if (topN) params.set("topN", String(topN));
+	const queryString = params.toString();
+
 	return apiClient.get<TopProductDto[]>({
-		url: `${SalesDashboardApi.Dashboard}/${companyId}/top-products`,
+		url: `${companyDashboardUrl(companyCen)}/top-products${queryString ? `?${queryString}` : ""}`,
 	});
 };
 
-const getKdsStatus = (companyId: number) => {
+const getKdsStatus = (companyCen: string) => {
 	return apiClient.get<KdsStatusCountersDto>({
-		url: `${SalesDashboardApi.Dashboard}/${companyId}/kds-status`,
+		url: `${companyDashboardUrl(companyCen)}/kds-status`,
 	});
 };
 

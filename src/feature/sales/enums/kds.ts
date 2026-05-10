@@ -1,8 +1,8 @@
 export enum OrderDetailStatus {
-	Created = 1,
-	Preparing = 2,
-	Delivered = 3,
-	Canceled = 4,
+	Created = "created",
+	Preparing = "preparing",
+	Delivered = "delivered",
+	Canceled = "canceled",
 }
 
 export const ORDER_DETAIL_STATUS_LABELS: Record<OrderDetailStatus, string> = {
@@ -12,30 +12,40 @@ export const ORDER_DETAIL_STATUS_LABELS: Record<OrderDetailStatus, string> = {
 	[OrderDetailStatus.Canceled]: "Cancelado",
 };
 
-export const getOrderDetailStatusLabel = (statusId: number, fallbackLabel?: string) => {
-	if (statusId in ORDER_DETAIL_STATUS_LABELS) {
-		return ORDER_DETAIL_STATUS_LABELS[statusId as OrderDetailStatus];
+export const normalizeOrderDetailStatus = (status: string | undefined | null) => {
+	const normalized = (status ?? "").trim().toLowerCase();
+	return normalized === "cancelled" ? OrderDetailStatus.Canceled : normalized;
+};
+
+export const getOrderDetailStatusLabel = (status: string | undefined | null, fallbackLabel?: string) => {
+	const normalized = normalizeOrderDetailStatus(status);
+
+	if (normalized in ORDER_DETAIL_STATUS_LABELS) {
+		return ORDER_DETAIL_STATUS_LABELS[normalized as OrderDetailStatus];
 	}
 
 	return fallbackLabel ?? "Desconocido";
 };
 
-export const canAdvanceKdsStatus = (statusId: number) => {
-	return statusId === OrderDetailStatus.Created || statusId === OrderDetailStatus.Preparing;
+export const canAdvanceKdsStatus = (status: string | undefined | null) => {
+	const normalized = normalizeOrderDetailStatus(status);
+	return normalized === OrderDetailStatus.Created || normalized === OrderDetailStatus.Preparing;
 };
 
-export const getNextKdsStatus = (statusId: number): OrderDetailStatus | null => {
-	if (statusId === OrderDetailStatus.Created) {
+export const getNextKdsStatus = (status: string | undefined | null): OrderDetailStatus | null => {
+	const normalized = normalizeOrderDetailStatus(status);
+
+	if (normalized === OrderDetailStatus.Created) {
 		return OrderDetailStatus.Preparing;
 	}
 
-	if (statusId === OrderDetailStatus.Preparing) {
+	if (normalized === OrderDetailStatus.Preparing) {
 		return OrderDetailStatus.Delivered;
 	}
 
 	return null;
 };
 
-export const canCancelFromPos = (statusId: number) => {
-	return statusId === OrderDetailStatus.Created;
+export const canCancelFromPos = (status: string | undefined | null) => {
+	return normalizeOrderDetailStatus(status) === OrderDetailStatus.Created;
 };
