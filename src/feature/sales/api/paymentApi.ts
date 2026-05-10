@@ -1,24 +1,20 @@
 import apiClient from "@/api/apiClient";
-import type {
-	PaymentTypeDto,
-	ProcessRestaurantOrderPaymentDto,
-	ProcessRestaurantOrderPaymentSuccess,
-} from "../types/payment";
+import type { PaymentMethodDto, ProcessTicketPaymentDto, ProcessTicketPaymentSuccess } from "../types/payment";
 
 export enum SalesPaymentApi {
-	Methods = "/sales/payment/methods",
-	Process = "/sales/payment/process",
+	Methods = "/sales/payment-methods",
+	Sales = "/sales",
 }
 
 const getPaymentMethods = () => {
-	return apiClient.get<PaymentTypeDto[]>({
+	return apiClient.get<PaymentMethodDto[]>({
 		url: SalesPaymentApi.Methods,
 	});
 };
 
-const processPayment = (payload: ProcessRestaurantOrderPaymentDto) => {
-	return apiClient.post<ProcessRestaurantOrderPaymentSuccess>({
-		url: SalesPaymentApi.Process,
+const processPayment = (companyCen: string, ticketCen: string, payload: ProcessTicketPaymentDto) => {
+	return apiClient.post<ProcessTicketPaymentSuccess>({
+		url: `${SalesPaymentApi.Sales}/companies/${encodeURIComponent(companyCen)}/tickets/${encodeURIComponent(ticketCen)}/payment`,
 		data: payload,
 	});
 };

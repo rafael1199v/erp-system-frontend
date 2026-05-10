@@ -1,16 +1,16 @@
+import type { Warehouse } from "@/types/warehouse";
 import apiClient from "../apiClient";
-import { Warehouse } from "@/types/warehouse";
 
 export enum WarehouseApi {
-  Warehouse = "/inventory/warehouse"
+	Inventory = "/inventory",
 }
 
-const getWarehousesByCompany = (companyId: string) => {
-    return apiClient.get<Warehouse[]>({
-        url: `${WarehouseApi.Warehouse}/${companyId}`
-    });
-}
+const getWarehousesByCompany = (companyCen: string) => {
+	return apiClient.get<Warehouse[]>({
+		url: `${WarehouseApi.Inventory}/companies/${encodeURIComponent(companyCen)}/warehouses`,
+	});
+};
 
 export default {
-    getWarehousesByCompany
-}
+	getWarehousesByCompany,
+};

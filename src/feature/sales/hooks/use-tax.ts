@@ -1,15 +1,16 @@
-import taxApi from "../api/taxApi";
 import { useQuery } from "@tanstack/react-query";
+import taxApi from "../api/taxApi";
+import { normalizeCen } from "../utils/cen";
 
-export const useTax = (companyId: number | null) => {
-	const normalizedCompanyId = companyId ?? -1;
+export const useTax = (companyCen: string | null) => {
+	const normalizedCompanyCen = normalizeCen(companyCen);
 
 	return useQuery({
-		queryKey: ["sales-tax", normalizedCompanyId],
+		queryKey: ["sales-tax", normalizedCompanyCen],
 		queryFn: async () => {
-			const response = await taxApi.getGlobalTax(normalizedCompanyId);
+			const response = await taxApi.getGlobalTax(normalizedCompanyCen ?? "");
 			return response.data;
 		},
-		enabled: normalizedCompanyId > 0,
+		enabled: normalizedCompanyCen !== null,
 	});
 };

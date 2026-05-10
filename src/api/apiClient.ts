@@ -1,63 +1,56 @@
+import axios, { type AxiosError, type AxiosRequestConfig, type AxiosResponse } from "axios";
+import { toast } from "sonner";
 import { GLOBAL_CONFIG } from "@/global-config";
 import { t } from "@/locales/i18n";
 import userStore from "@/store/userStore";
-import axios, { type AxiosRequestConfig, type AxiosError, type AxiosResponse } from "axios";
-import { toast } from "sonner";
 
-const axiosInstance = axios.create({
-	baseURL: GLOBAL_CONFIG.apiBaseUrl,
-	timeout: 50000,
-	headers: { "Content-Type": "application/json;charset=utf-8" },
-});
+const createAxiosInstance = (baseURL: string) => {
+	const instance = axios.create({
+		baseURL,
+		timeout: 50000,
+		headers: { "Content-Type": "application/json;charset=utf-8" },
+	});
 
-axiosInstance.interceptors.request.use(
-	(config) => {
-		config.headers.Authorization = "Bearer Token";
-		return config;
-	},
-	(error) => Promise.reject(error),
-);
+	instance.interceptors.request.use(
+		(config) => {
+			config.headers.Authorization = "Bearer Token";
+			return config;
+		},
+		(error) => Promise.reject(error),
+	);
 
-axiosInstance.interceptors.response.use(
-	(res: AxiosResponse) => {
-		// if (!res.data) throw new Error(t("sys.api.apiRequestFailed"));
+	instance.interceptors.response.use(
+		(res: AxiosResponse) => {
+			if (res.status === 200 || res.status === 201) return res;
+			else throw new Error(t("sys.api.apiRequestFailed"));
+		},
+		(error: AxiosError) => {
+			const { response, message } = error || {};
+			const responseData = response?.data;
+			const errMsg =
+				typeof responseData === "string"
+					? responseData
+					: (responseData as { message?: string } | undefined)?.message || message || t("sys.api.errorMessage");
+			toast.error(errMsg, { position: "top-center" });
 
-		if (res.status === 200 || res.status === 201) return res;
-		else throw new Error(t("sys.api.apiRequestFailed"));
+			if (response?.status === 401) {
+				userStore.getState().actions.clearUserInfoAndToken();
+			}
 
-		// const { status, data, message } = res.data;
-		// if (status === ResultStatus.SUCCESS) {
-		// 	return data;
-		// }
+			return Promise.reject(error);
+		},
+	);
 
-		//return res;
-	},
-	(error: AxiosError) => {
-		// const { response, message } = error || {};
-		// const errMsg = response?.data?.message || message || t("sys.api.errorMessage");
-		// toast.error(errMsg, { position: "top-center" });
-		// if (response?.status === 401) {
-		// 	userStore.getState().actions.clearUserInfoAndToken();
-		// }
-		// return Promise.reject(error);
-		const { response, message } = error || {};
-		const responseData = response?.data;
-		const errMsg =
-			typeof responseData === "string"
-				? responseData
-				: (responseData as { message?: string } | undefined)?.message || message || t("sys.api.errorMessage");
-		console.log(errMsg);
-		toast.error(errMsg, { position: "top-center" });
-
-		if (response?.status === 401) {
-			userStore.getState().actions.clearUserInfoAndToken();
-		}
-
-		return Promise.reject(error);
-	},
-);
+	return instance;
+};
 
 class APIClient {
+	private instance: ReturnType<typeof createAxiosInstance>;
+
+	constructor(baseURL: string) {
+		this.instance = createAxiosInstance(baseURL);
+	}
+
 	get<T = unknown>(config: AxiosRequestConfig): Promise<AxiosResponse<T>> {
 		return this.request<AxiosResponse<T>>({ ...config, method: "GET" });
 	}
@@ -67,12 +60,15 @@ class APIClient {
 	put<T = unknown>(config: AxiosRequestConfig): Promise<AxiosResponse<T>> {
 		return this.request<AxiosResponse<T>>({ ...config, method: "PUT" });
 	}
+	patch<T = unknown>(config: AxiosRequestConfig): Promise<AxiosResponse<T>> {
+		return this.request<AxiosResponse<T>>({ ...config, method: "PATCH" });
+	}
 	delete<T = unknown>(config: AxiosRequestConfig): Promise<AxiosResponse<T>> {
 		return this.request<AxiosResponse<T>>({ ...config, method: "DELETE" });
 	}
 	request<T = unknown>(config: AxiosRequestConfig): Promise<T> {
-		return axiosInstance.request<any, T>(config);
+		return this.instance.request<any, T>(config);
 	}
 }
 
-export default new APIClient();
+export default new APIClient(GLOBAL_CONFIG.apiBaseUrl);

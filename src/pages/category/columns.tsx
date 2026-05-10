@@ -1,35 +1,29 @@
 "use client";
 
-import { Button } from "@/ui/button";
 import type { ColumnDef } from "@tanstack/react-table";
+import { Button } from "@/ui/button";
 
 export interface CategoryRow {
-  id: number;
-  name: string;
+	categoryCen: string;
+	name: string;
 }
 
-export const getColumns = (
-  onEdit: (category: CategoryRow) => void
-): ColumnDef<CategoryRow>[] => [
-  {
-    accessorKey: "id",
-    header: "Codigo",
-  },
-  {
-    accessorKey: "name",
-    header: "Nombre",
-  },
-  {
-    id: "actions",
-    header: "Acciones",
-    cell: ({ row }) => {
-      const category = row.original;
+export const getColumns = (onEdit: (category: CategoryRow) => void): ColumnDef<CategoryRow>[] => [
+	{
+		accessorKey: "name",
+		header: "Nombre",
+	},
+	{
+		id: "actions",
+		header: "Acciones",
+		cell: ({ row }) => {
+			const category = row.original;
 
-      return (
-        <Button variant="outline" className="cursor-pointer" onClick={() => onEdit(category)}>
-          Editar
-        </Button>
-      );
-    },
-  },
+			return (
+				<Button variant="outline" className="cursor-pointer" onClick={() => onEdit(category)}>
+					Editar
+				</Button>
+			);
+		},
+	},
 ];

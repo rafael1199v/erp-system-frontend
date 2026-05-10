@@ -1,3 +1,7 @@
+import { type CSSProperties, useCallback, useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
+import screenfull from "screenfull";
+import { type ThemeColorPresets, ThemeLayout, ThemeMode } from "#/enum";
 import CyanBlur from "@/assets/images/background/cyan-blur.png";
 import RedBlur from "@/assets/images/background/red-blur.png";
 import { Icon } from "@/components/icon";
@@ -14,11 +18,6 @@ import { Switch } from "@/ui/switch";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/ui/tooltip";
 import { Text } from "@/ui/typography";
 import { cn } from "@/utils";
-import { type CSSProperties, useCallback, useEffect, useState } from "react";
-
-import { useTranslation } from "react-i18next";
-import screenfull from "screenfull";
-import { type ThemeColorPresets, ThemeLayout, ThemeMode } from "#/enum";
 
 export default function SettingButton() {
 	const { t } = useTranslation();
@@ -348,6 +347,7 @@ export default function SettingButton() {
 						className="w-full border-dashed text-text-primary hover:border-primary hover:text-primary"
 						onClick={toggleFullScreen}
 					>
+						{/** biome-ignore lint/a11y/useAriaPropsSupportedByRole: Ant Design renders this switch role */}
 						<div
 							className="flex items-center justify-center"
 							aria-label={isFullscreen ? t("sys.settings.exitFullscreen") : t("sys.settings.fullscreen")}

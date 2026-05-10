@@ -1,13 +1,15 @@
 import type { RouteObject } from "react-router";
 import { Navigate } from "react-router";
-import { Component } from "./utils";
-
+import DashboardAnalysisPage from "@/feature/dashboard/pages/analysis";
+import PurchaseOrderCreatePage from "@/feature/purchases/pages/order-create";
+import PurchaseOrderDetailPage from "@/feature/purchases/pages/order-detail";
+import PurchaseOrdersPage from "@/feature/purchases/pages/orders";
+import CheckoutPage from "@/feature/sales/pages/checkout";
+import KdsPage from "@/feature/sales/pages/kds";
 import OrderPage from "@/feature/sales/pages/order";
 import OrderDetailPage from "@/feature/sales/pages/order-detail";
-import CheckoutPage from "@/feature/sales/pages/checkout";
 import TaxPage from "@/feature/sales/pages/tax";
-import KdsPage from "@/feature/sales/pages/kds";
-import DashboardAnalysisPage from "@/feature/dashboard/pages/analysis";
+import { Component } from "./utils";
 
 export function getFrontendDashboardRoutes(): RouteObject[] {
 	const frontendDashboardRoutes: RouteObject[] = [
@@ -29,12 +31,21 @@ export function getFrontendDashboardRoutes(): RouteObject[] {
 		{
 			path: "sales",
 			children: [
-				{ index: true, element: <Navigate to="orders" replace /> },
-				{ path: "orders", element: <OrderPage /> },
-				{ path: "orders/:restaurantOrderId", element: <OrderDetailPage /> },
-				{ path: "orders/:restaurantOrderId/checkout", element: <CheckoutPage /> },
+				{ index: true, element: <Navigate to="tickets" replace /> },
+				{ path: "tickets", element: <OrderPage /> },
+				{ path: "tickets/:ticketCen", element: <OrderDetailPage /> },
+				{ path: "tickets/:ticketCen/checkout", element: <CheckoutPage /> },
 				{ path: "tax", element: <TaxPage /> },
 				{ path: "kds", element: <KdsPage /> },
+			],
+		},
+		{
+			path: "purchases",
+			children: [
+				{ index: true, element: <Navigate to="orders" replace /> },
+				{ path: "orders", element: <PurchaseOrdersPage /> },
+				{ path: "orders/new", element: <PurchaseOrderCreatePage /> },
+				{ path: "orders/:orderCen", element: <PurchaseOrderDetailPage /> },
 			],
 		},
 		// {

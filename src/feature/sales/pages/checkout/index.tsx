@@ -1,3 +1,8 @@
+import { ArrowLeft, CircleAlert, CreditCard } from "lucide-react";
+import { useState } from "react";
+import { useLocation, useNavigate, useParams } from "react-router";
+import { toast } from "sonner";
+import { useSelectedCompanyCen } from "@/store/companyStore";
 import { Alert, AlertDescription, AlertTitle } from "@/ui/alert";
 import { Badge } from "@/ui/badge";
 import { Button } from "@/ui/button";
@@ -6,85 +11,51 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/ui/table";
 import { Title } from "@/ui/typography";
-import { useSelectedCompanyId } from "@/store/companyStore";
 import { fCurrency } from "@/utils/format-number";
-import { useQuery } from "@tanstack/react-query";
-import { ArrowLeft, CircleAlert, CreditCard } from "lucide-react";
-import { useMemo, useState } from "react";
-import { useLocation, useNavigate, useParams } from "react-router";
-import { toast } from "sonner";
-import orderApi from "../../api/orderApi";
 import { getOrderStatusLabel, isOrderOpen } from "../../enums/order";
+import { useOrderDetail } from "../../hooks/use-order-detail";
+import { usePaymentMethods } from "../../hooks/use-payment-methods";
 import { extractProcessPaymentApiError, useProcessPayment } from "../../hooks/use-process-payment";
 import { useRestaurantOrders } from "../../hooks/use-pos-tickets";
-import { usePaymentMethods } from "../../hooks/use-payment-methods";
-import type { RestaurantOrder } from "../../types/order";
+import type { TicketLocationState } from "../../types/order";
 import type { StockInsufficiencyResponseDto } from "../../types/payment";
-import { OrderDetailStatus } from "../../enums/kds";
-
-type CheckoutLocationState = {
-	restaurantOrder?: RestaurantOrder;
-};
 
 export default function CheckoutPage() {
 	const navigate = useNavigate();
-	const { state } = useLocation() as { state: CheckoutLocationState | null };
-	const params = useParams<{ restaurantOrderId: string }>();
-	const restaurantOrderId = Number.parseInt(params.restaurantOrderId ?? "", 10);
-	const hasValidOrder = Number.isInteger(restaurantOrderId) && restaurantOrderId > 0;
-	const selectedCompanyId = useSelectedCompanyId();
-	const companyId = Number.parseInt(selectedCompanyId ?? "", 10);
-	const hasValidCompany = Number.isInteger(companyId) && companyId > 0;
+	const { state } = useLocation() as { state: TicketLocationState | null };
+	const params = useParams<{ ticketCen: string }>();
+	const ticketCen = params.ticketCen ?? "";
+	const hasValidTicket = ticketCen.trim() !== "";
+	const selectedCompanyCen = useSelectedCompanyCen();
+	const companyCen = selectedCompanyCen ?? "";
+	const hasValidCompany = companyCen.trim() !== "";
 
-	const [selectedPaymentTypeId, setSelectedPaymentTypeId] = useState<number | null>(null);
+	const [selectedPaymentMethodCode, setSelectedPaymentMethodCode] = useState<string | null>(null);
 	const [insufficiencies, setInsufficiencies] = useState<StockInsufficiencyResponseDto[]>([]);
 	const [isInsufficiencyDialogOpen, setIsInsufficiencyDialogOpen] = useState(false);
-	const { orders } = useRestaurantOrders(hasValidCompany ? companyId : null);
 
-	const orderFromList = orders.find((order) => order.restaurantOrderId === restaurantOrderId);
-	const orderStatusId = orderFromList?.orderStatusId ?? state?.restaurantOrder?.orderStatusId;
-	const orderIsOpen = isOrderOpen(orderStatusId);
+	const { tickets } = useRestaurantOrders(hasValidCompany ? companyCen : null);
+	const ticketFromList = tickets.find((ticket) => ticket.ticketCen === ticketCen);
+	const ticket = ticketFromList ?? state?.ticket;
+	const ticketStatus = ticket?.status;
+	const ticketIsOpen = ticketStatus ? isOrderOpen(ticketStatus) : true;
 
-	const orderDetailsQuery = useQuery({
-		queryKey: ["sales-order-details", restaurantOrderId],
-		queryFn: async () => {
-			const response = await orderApi.getOrderDetails(restaurantOrderId);
-			return response.data;
-		},
-		enabled: hasValidOrder,
+	const { ticketItems, ticketTotals } = useOrderDetail({
+		companyCen: hasValidCompany ? companyCen : null,
+		ticketCen: hasValidTicket ? ticketCen : null,
+		enabled: hasValidCompany && hasValidTicket,
 	});
-
-	const orderTaxQuery = useQuery({
-		queryKey: ["sales-order-tax", restaurantOrderId],
-		queryFn: async () => {
-			const response = await orderApi.getOrderTax(restaurantOrderId);
-			return response.data;
-		},
-		enabled: hasValidOrder,
-	});
-
 	const { paymentMethods, isLoadingPaymentMethods, isErrorPaymentMethods } = usePaymentMethods();
 	const { processPayment, isProcessingPayment } = useProcessPayment();
 
-	const subtotal = useMemo(() => {
-		return (orderDetailsQuery.data ?? [])
-			.filter((orderDetail) => orderDetail.restaurantOrderStatusId !== OrderDetailStatus.Canceled)
-			.reduce((sum, item) => sum + item.quantity * item.unitPrice, 0);
-	}, [orderDetailsQuery.data]);
-
-	const taxRate = orderTaxQuery.data ?? 0;
-	const taxAmount = subtotal * (taxRate / 100);
-	const total = subtotal + taxAmount;
-
-	const canProcessPayment = hasValidOrder && orderIsOpen && selectedPaymentTypeId !== null && !isProcessingPayment;
+	const subtotal = ticketTotals?.subtotal ?? ticketItems.reduce((sum, item) => sum + item.quantity * item.unitPrice, 0);
+	const taxAmount = ticketTotals?.taxAmount ?? 0;
+	const total = ticketTotals?.total ?? subtotal + taxAmount;
+	const canProcessPayment =
+		hasValidCompany && hasValidTicket && ticketIsOpen && selectedPaymentMethodCode !== null && !isProcessingPayment;
 
 	const handleProcessPayment = async () => {
-		if (!hasValidOrder || selectedPaymentTypeId === null) {
-			return;
-		}
-
-		if (!orderIsOpen) {
-			toast.error("Solo se puede cobrar una cuenta abierta.");
+		if (!canProcessPayment || selectedPaymentMethodCode === null) {
 			return;
 		}
 
@@ -93,19 +64,29 @@ export default function CheckoutPage() {
 
 		try {
 			const response = await processPayment({
-				restaurantOrderId,
-				paymentTypeId: selectedPaymentTypeId,
+				companyCen,
+				ticketCen,
+				paymentMethodCode: selectedPaymentMethodCode,
 			});
 
-			toast.success(`Pago procesado correctamente. Venta #${response.saleId}.`);
-			navigate("/sales/orders");
+			const inventoryReference = response.inventoryDocumentCen ? ` Documento ${response.inventoryDocumentCen}.` : "";
+			toast.success(`Pago procesado correctamente. Venta ${response.saleCen}.${inventoryReference}`);
+			navigate("/sales/tickets");
 		} catch (error) {
 			const apiError = extractProcessPaymentApiError(error);
 
-			if (apiError && typeof apiError !== "string" && apiError.insufficiencies.length > 0) {
-				setInsufficiencies(apiError.insufficiencies);
-				setIsInsufficiencyDialogOpen(true);
-				return;
+			if (apiError && typeof apiError !== "string") {
+				const stockFailures = apiError.insufficiencies ?? apiError.requirements ?? [];
+				if (stockFailures.length > 0) {
+					setInsufficiencies(stockFailures);
+					setIsInsufficiencyDialogOpen(true);
+					return;
+				}
+
+				if (apiError.message) {
+					toast.error(apiError.message);
+					return;
+				}
 			}
 
 			if (typeof apiError === "string") {
@@ -113,21 +94,16 @@ export default function CheckoutPage() {
 				return;
 			}
 
-			if (apiError && typeof apiError !== "string" && apiError.message) {
-				toast.error(apiError.message);
-				return;
-			}
-
 			toast.error("No se pudo procesar el pago.");
 		}
 	};
 
-	if (!hasValidOrder) {
+	if (!hasValidTicket) {
 		return (
 			<Alert>
 				<CircleAlert className="size-4" />
-				<AlertTitle>Pedido invalido</AlertTitle>
-				<AlertDescription>No se encontro un identificador valido para continuar con el cobro.</AlertDescription>
+				<AlertTitle>Ticket invalido</AlertTitle>
+				<AlertDescription>No se encontro un CEN valido para continuar con el cobro.</AlertDescription>
 			</Alert>
 		);
 	}
@@ -141,17 +117,25 @@ export default function CheckoutPage() {
 						<Badge variant="outline">Cobro</Badge>
 					</div>
 					<Title as="h1" className="mt-2">
-						Cobrar pedido #{state?.restaurantOrder?.dailyNumber ?? restaurantOrderId}
+						Cobrar ticket #{ticket?.dailyNumber ?? ticketCen}
 					</Title>
 					<p className="mt-1 text-sm text-muted-foreground">
 						Selecciona el metodo de pago para cerrar la cuenta y generar la venta.
 					</p>
 				</div>
-				<Button variant="outline" onClick={() => navigate("/sales/orders")}>
+				<Button variant="outline" onClick={() => navigate("/sales/tickets")}>
 					<ArrowLeft className="size-4" />
 					Volver a tickets
 				</Button>
 			</div>
+
+			{!hasValidCompany ? (
+				<Alert>
+					<CircleAlert className="size-4" />
+					<AlertTitle>Compania requerida</AlertTitle>
+					<AlertDescription>Selecciona una compania para continuar con el cobro.</AlertDescription>
+				</Alert>
+			) : null}
 
 			<div className="grid gap-5 lg:grid-cols-[1.2fr_1fr]">
 				<Card>
@@ -161,16 +145,16 @@ export default function CheckoutPage() {
 							Metodo de pago
 						</CardTitle>
 						<CardDescription>
-							Selecciona una opcion de pago. Si no hay stock suficiente, se mostrara el detalle del faltante.
+							Si no hay stock suficiente, se mostrara el detalle del faltante por producto.
 						</CardDescription>
 					</CardHeader>
 					<CardContent className="space-y-4">
-						{typeof orderStatusId === "number" && !orderIsOpen ? (
+						{ticketStatus && !ticketIsOpen ? (
 							<Alert>
 								<CircleAlert className="size-4" />
 								<AlertTitle>Cuenta no disponible para cobro</AlertTitle>
 								<AlertDescription>
-									Estado actual: {getOrderStatusLabel(orderStatusId)}. Solo las cuentas abiertas pueden cobrarse.
+									Estado actual: {getOrderStatusLabel(ticketStatus)}. Solo las cuentas abiertas pueden cobrarse.
 								</AlertDescription>
 							</Alert>
 						) : null}
@@ -186,21 +170,21 @@ export default function CheckoutPage() {
 						<div className="space-y-2">
 							<p className="text-sm font-medium text-text-primary">Metodo</p>
 							<Select
-								value={selectedPaymentTypeId ? String(selectedPaymentTypeId) : undefined}
-								onValueChange={(value) => {
-									setSelectedPaymentTypeId(Number(value));
-								}}
+								value={selectedPaymentMethodCode ?? undefined}
+								onValueChange={setSelectedPaymentMethodCode}
 								disabled={isLoadingPaymentMethods || paymentMethods.length === 0 || isProcessingPayment}
 							>
 								<SelectTrigger className="w-full">
 									<SelectValue placeholder={isLoadingPaymentMethods ? "Cargando metodos..." : "Seleccionar metodo"} />
 								</SelectTrigger>
 								<SelectContent>
-									{paymentMethods.map((paymentMethod) => (
-										<SelectItem key={paymentMethod.id} value={String(paymentMethod.id)}>
-											{paymentMethod.name}
-										</SelectItem>
-									))}
+									{paymentMethods
+										.filter((paymentMethod) => paymentMethod.isActive)
+										.map((paymentMethod) => (
+											<SelectItem key={paymentMethod.paymentMethodCode} value={paymentMethod.paymentMethodCode}>
+												{paymentMethod.name}
+											</SelectItem>
+										))}
 								</SelectContent>
 							</Select>
 						</div>
@@ -213,8 +197,8 @@ export default function CheckoutPage() {
 
 				<Card>
 					<CardHeader>
-						<CardTitle>Resumen del pedido</CardTitle>
-						<CardDescription>Totales calculados con los items actuales del pedido.</CardDescription>
+						<CardTitle>Resumen del ticket</CardTitle>
+						<CardDescription>Totales autoritativos consultados desde Sales.</CardDescription>
 					</CardHeader>
 					<CardContent className="space-y-3">
 						<div className="flex items-center justify-between text-sm">
@@ -222,20 +206,14 @@ export default function CheckoutPage() {
 							<span className="font-medium">{fCurrency(subtotal)}</span>
 						</div>
 						<div className="flex items-center justify-between text-sm">
-							<span className="text-muted-foreground">Impuesto ({taxRate}%)</span>
-							<span className="font-medium">{fCurrency(taxAmount)}</span>
+							<span className="text-muted-foreground">Impuesto</span>
+							<span className="font-medium">{taxAmount} %</span>
 						</div>
 						<div className="h-px bg-border" />
 						<div className="flex items-center justify-between text-base font-semibold">
 							<span>Total</span>
 							<span>{fCurrency(total)}</span>
 						</div>
-						{orderDetailsQuery.isError ? (
-							<p className="text-xs text-warning">No se pudieron cargar los items del pedido.</p>
-						) : null}
-						{orderTaxQuery.isError ? (
-							<p className="text-xs text-warning">No se pudo cargar el impuesto global. Se usa 0% temporalmente.</p>
-						) : null}
 					</CardContent>
 				</Card>
 			</div>
@@ -245,7 +223,7 @@ export default function CheckoutPage() {
 					<DialogHeader>
 						<DialogTitle>Stock insuficiente para completar el pago</DialogTitle>
 						<DialogDescription>
-							Ajusta las cantidades del pedido o repone inventario para poder continuar con el cobro.
+							Ajusta las cantidades del ticket o repone inventario para poder continuar con el cobro.
 						</DialogDescription>
 					</DialogHeader>
 
@@ -260,18 +238,14 @@ export default function CheckoutPage() {
 								</TableRow>
 							</TableHeader>
 							<TableBody>
-								{insufficiencies.map((item) => {
-									const missingQuantity = Math.max(item.requestedQuantity - item.availableQuantity, 0);
-
-									return (
-										<TableRow key={item.productId}>
-											<TableCell>{item.productName}</TableCell>
-											<TableCell className="text-right">{item.requestedQuantity}</TableCell>
-											<TableCell className="text-right">{item.availableQuantity}</TableCell>
-											<TableCell className="text-right font-semibold text-warning">{missingQuantity}</TableCell>
-										</TableRow>
-									);
-								})}
+								{insufficiencies.map((item) => (
+									<TableRow key={`${item.productCen ?? item.productName}-${item.warehouseCen ?? "warehouse"}`}>
+										<TableCell>{item.productName}</TableCell>
+										<TableCell className="text-right">{item.requestedQuantity}</TableCell>
+										<TableCell className="text-right">{item.availableQuantity}</TableCell>
+										<TableCell className="text-right font-semibold text-warning">{item.missingQuantity}</TableCell>
+									</TableRow>
+								))}
 							</TableBody>
 						</Table>
 					</div>

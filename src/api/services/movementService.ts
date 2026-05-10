@@ -1,43 +1,41 @@
-import { CreateMovement, Movement } from "@/types/movement";
+import type { CreateMovement, DocumentType, InventoryAdjustmentRequest, Movement } from "@/types/movement";
 import apiClient from "../apiClient";
-import { MovementType } from "@/types/enum";
 
 export enum MovementApi {
-  Movement = "/inventory/movement"
+	Inventory = "/inventory",
 }
 
-const createMovement = (movement: CreateMovement) => {
-    return apiClient.post<void>({
-        url: `${MovementApi.Movement}`,
-        data: movement
-    });
-}
+const createMovement = (companyCen: string, movement: CreateMovement) => {
+	return apiClient.post<Movement>({
+		url: `${MovementApi.Inventory}/companies/${encodeURIComponent(companyCen)}/documents`,
+		data: movement,
+	});
+};
 
-const createAdjustment = (movement: CreateMovement) => {
-    return apiClient.post<void>({
-        url: `${MovementApi.Movement}/adjustment`,
-        data: movement
-    })
-}
+const createAdjustment = (companyCen: string, adjustment: InventoryAdjustmentRequest) => {
+	return apiClient.post<Movement>({
+		url: `${MovementApi.Inventory}/companies/${encodeURIComponent(companyCen)}/stock/adjustments`,
+		data: adjustment,
+	});
+};
 
-const getMovementsByType = (movementType: MovementType, companyId: string) => {
-    console.log(`${MovementApi.Movement}/${companyId}?movementType=${movementType}`);
+const getMovementsByType = (documentType: DocumentType, companyCen: string) => {
+	const params = new URLSearchParams({ documentType });
 
-    return apiClient.get<Movement[]>({
-        url: `${MovementApi.Movement}/${companyId}?movementType=${movementType}`
-    });
-} 
+	return apiClient.get<Movement[]>({
+		url: `${MovementApi.Inventory}/companies/${encodeURIComponent(companyCen)}/documents?${params.toString()}`,
+	});
+};
 
-const getMovements = (companyId: string) => {
-    return apiClient.get<Movement[]>({
-        url: `${MovementApi.Movement}/${companyId}?movementType=`
-    });
-}
-
+const getMovements = (companyCen: string) => {
+	return apiClient.get<Movement[]>({
+		url: `${MovementApi.Inventory}/companies/${encodeURIComponent(companyCen)}/documents`,
+	});
+};
 
 export default {
-    createMovement,
-    createAdjustment,
-    getMovementsByType,
-    getMovements
-}
+	createMovement,
+	createAdjustment,
+	getMovementsByType,
+	getMovements,
+};

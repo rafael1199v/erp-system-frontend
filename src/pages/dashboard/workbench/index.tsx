@@ -1,3 +1,4 @@
+import { useState } from "react";
 import avatar1 from "@/assets/images/avatars/avatar-1.png";
 import avatar2 from "@/assets/images/avatars/avatar-2.png";
 import avatar3 from "@/assets/images/avatars/avatar-3.png";
@@ -12,7 +13,6 @@ import { Card, CardContent } from "@/ui/card";
 import { Progress } from "@/ui/progress";
 import { Text, Title } from "@/ui/typography";
 import { rgbAlpha } from "@/utils/theme";
-import { useState } from "react";
 import BannerCard from "./banner-card";
 
 const quickStats = [
@@ -110,6 +110,43 @@ export default function Workbench() {
 		dataLabels: { enabled: false },
 		plotOptions: { pie: { donut: { size: "70%" } } },
 	});
+	const quickStatsChartOptions = [
+		useChart({
+			chart: { sparkline: { enabled: true } },
+			colors: [quickStats[0].color],
+			grid: { show: false },
+			yaxis: { show: false },
+			tooltip: { enabled: false },
+		}),
+		useChart({
+			chart: { sparkline: { enabled: true } },
+			colors: [quickStats[1].color],
+			grid: { show: false },
+			yaxis: { show: false },
+			tooltip: { enabled: false },
+		}),
+		useChart({
+			chart: { sparkline: { enabled: true } },
+			colors: [quickStats[2].color],
+			grid: { show: false },
+			yaxis: { show: false },
+			tooltip: { enabled: false },
+		}),
+		useChart({
+			chart: { sparkline: { enabled: true } },
+			colors: [quickStats[3].color],
+			grid: { show: false },
+			yaxis: { show: false },
+			tooltip: { enabled: false },
+		}),
+	];
+	const projectOverviewOptions = useChart({
+		chart: { sparkline: { enabled: true } },
+		colors: ["#ef4444"],
+		grid: { show: false },
+		yaxis: { show: false },
+		tooltip: { enabled: false },
+	});
 
 	// throw new Error("test error"); // 注释掉直接抛错，改用演示组件
 
@@ -118,7 +155,7 @@ export default function Workbench() {
 			<BannerCard />
 			{/* 顶部四个统计卡片 */}
 			<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-				{quickStats.map((stat) => (
+				{quickStats.map((stat, index) => (
 					<Card key={stat.label} className="flex flex-col justify-between h-full">
 						<CardContent className="flex flex-col gap-2 p-4">
 							<div className="flex items-center gap-2">
@@ -145,18 +182,7 @@ export default function Workbench() {
 								</span>
 							</div>
 							<div className="w-full h-10 mt-2">
-								<Chart
-									type="bar"
-									height={40}
-									options={useChart({
-										chart: { sparkline: { enabled: true } },
-										colors: [stat.color],
-										grid: { show: false },
-										yaxis: { show: false },
-										tooltip: { enabled: false },
-									})}
-									series={[{ data: stat.chart }]}
-								/>
+								<Chart type="bar" height={40} options={quickStatsChartOptions[index]} series={[{ data: stat.chart }]} />
 							</div>
 						</CardContent>
 					</Card>
@@ -231,13 +257,7 @@ export default function Workbench() {
 						<Chart
 							type="line"
 							height={60}
-							options={useChart({
-								chart: { sparkline: { enabled: true } },
-								colors: ["#ef4444"],
-								grid: { show: false },
-								yaxis: { show: false },
-								tooltip: { enabled: false },
-							})}
+							options={projectOverviewOptions}
 							series={[{ data: [10, 20, 15, 30, 25, 40, 35, 20] }]}
 						/>
 					</div>

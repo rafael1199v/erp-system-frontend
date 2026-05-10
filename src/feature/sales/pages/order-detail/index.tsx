@@ -1,3 +1,8 @@
+import { ArrowLeft, CircleAlert, Printer, ShoppingBasket } from "lucide-react";
+import { type Dispatch, type SetStateAction, useEffect, useMemo, useState } from "react";
+import { useLocation, useNavigate, useParams } from "react-router";
+import { toast } from "sonner";
+import { useSelectedCompanyCen } from "@/store/companyStore";
 import { Alert, AlertDescription, AlertTitle } from "@/ui/alert";
 import { Badge } from "@/ui/badge";
 import { Button } from "@/ui/button";
@@ -5,532 +10,347 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/ui/
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/ui/dialog";
 import { Title } from "@/ui/typography";
 import { fCurrency } from "@/utils/format-number";
-import { useEffect, useMemo, useRef, useState } from "react";
-import { useLocation, useNavigate, useParams } from "react-router";
-import { toast } from "sonner";
-import { ArrowLeft, CircleAlert, Printer, ShoppingBasket } from "lucide-react";
-import { canCancelFromPos, getOrderDetailStatusLabel, OrderDetailStatus } from "../../enums/kds";
-import { canCancelOrder, getOrderStatusBadgeVariant, getOrderStatusLabel } from "../../enums/order";
 import OrderDetailItemCard from "../../components/OrderDetailItemCard";
 import ProductCatalogItemCard from "../../components/ProductCatalogItemCard";
+import { canCancelFromPos, getOrderDetailStatusLabel, normalizeOrderDetailStatus, OrderDetailStatus } from "../../enums/kds";
+import { canCancelOrder, getOrderStatusBadgeVariant, getOrderStatusLabel } from "../../enums/order";
 import { extractCancelOrderApiError, useCancelRestaurantOrder } from "../../hooks/use-cancel-restaurant-order";
 import { useOrderDetail } from "../../hooks/use-order-detail";
 import { useResendOrderDetail } from "../../hooks/use-resend-order-detail";
-import type {
-	AvailableOrderProduct,
-	OrderItem,
-	OrderLocationState,
-	ProductDraftQuantity,
-} from "../../types/order-detail";
-import { useRestaurantOrder } from "../../hooks/use-restaurant-order";
 import { useRestaurantOrderPdf } from "../../hooks/use-restaurant-order-pdf";
+import type { SalesCatalogProduct, TicketItem } from "../../types/order-detail";
+import type { TicketLocationState } from "../../types/order";
 
-const getOrderItemStatusId = (item: OrderItem) => {
-	return item.restaurantOrderStatusId;
+const isEditableTicketItem = (item: TicketItem) => {
+	const status = normalizeOrderDetailStatus(item.status);
+	return status === OrderDetailStatus.Created || status === OrderDetailStatus.Preparing;
 };
 
-const isEditableOrderItem = (item: OrderItem) => {
-	const statusId = getOrderItemStatusId(item);
-	return statusId === OrderDetailStatus.Created || statusId === OrderDetailStatus.Preparing;
+const isMergeableTicketItem = (item: TicketItem, productCen: string) => {
+	return item.productCen === productCen && normalizeOrderDetailStatus(item.status) === OrderDetailStatus.Created && !item.sentAt;
 };
 
 export default function OrderDetailPage() {
 	const navigate = useNavigate();
-	const { state } = useLocation() as { state: OrderLocationState | null };
-	const params = useParams<{ restaurantOrderId: string }>();
-	const restaurantOrderId = Number.parseInt(params.restaurantOrderId ?? "", 10);
-	const hasValidOrder = Number.isInteger(restaurantOrderId) && restaurantOrderId > 0;
+	const { state } = useLocation() as { state: TicketLocationState | null };
+	const params = useParams<{ ticketCen: string }>();
+	const ticketCen = params.ticketCen ?? "";
+	const hasValidTicket = ticketCen.trim() !== "";
+	const selectedCompanyCen = useSelectedCompanyCen();
+	const companyCen = selectedCompanyCen ?? "";
+	const hasValidCompany = companyCen.trim() !== "";
 
 	const {
 		products,
 		isLoadingProducts,
 		hasProductsError,
-		createOrderDetail,
-		updateOrderDetail,
-		cancelOrderDetail,
-		isUpdatingOrderDetail,
-		isCancelingOrderDetail,
-		orderDetails,
-		sendOrderToTeam,
+		createTicketItem,
+		updateTicketItem,
+		cancelTicketItem,
+		ticketItems,
+		ticketTotals,
+		sendTicketToKds,
 	} = useOrderDetail({
-		restaurantOrderId: hasValidOrder ? restaurantOrderId : null,
-		enabled: hasValidOrder,
+		companyCen: hasValidCompany ? companyCen : null,
+		ticketCen: hasValidTicket ? ticketCen : null,
+		enabled: hasValidCompany && hasValidTicket,
 	});
 
-	const { resendOrderDetail, isResendingOrderDetail } = useResendOrderDetail({
-		restaurantOrderId: hasValidOrder ? restaurantOrderId : null,
+	const { resendTicketItem } = useResendOrderDetail({
+		companyCen: hasValidCompany ? companyCen : null,
+		ticketCen: hasValidTicket ? ticketCen : null,
 	});
-
 	const orderPdfQuery = useRestaurantOrderPdf({
-		restaurantOrderId: hasValidOrder ? restaurantOrderId : null,
+		companyCen: hasValidCompany ? companyCen : null,
+		ticketCen: hasValidTicket ? ticketCen : null,
 	});
-	const { cancelRestaurantOrder, isCancelingRestaurantOrder } = useCancelRestaurantOrder();
+	const { cancelTicket, isCancelingTicket } = useCancelRestaurantOrder();
 
-	const taxQuery = useRestaurantOrder(restaurantOrderId);
-
-	const [orderItems, setOrderItems] = useState<Map<number, OrderItem>>(new Map());
-	const [draftQuantities, setDraftQuantities] = useState<ProductDraftQuantity>({});
-	const [stableProducts, setStableProducts] = useState<AvailableOrderProduct[]>([]);
-	const [pendingAddProductIds, setPendingAddProductIds] = useState<Set<number>>(new Set());
-	const [pendingSaveNoteDetailIds, setPendingSaveNoteDetailIds] = useState<Set<number>>(new Set());
-	const [pendingCancelDetailIds, setPendingCancelDetailIds] = useState<Set<number>>(new Set());
-	const [pendingResendDetailIds, setPendingResendDetailIds] = useState<Set<number>>(new Set());
+	const [draftQuantities, setDraftQuantities] = useState<Record<string, number>>({});
+	const [notesByItemCen, setNotesByItemCen] = useState<Record<string, string>>({});
+	const [activeItemOrder, setActiveItemOrder] = useState<string[]>([]);
+	const [pendingAddProductCens, setPendingAddProductCens] = useState<Set<string>>(new Set());
+	const [pendingUpdateItemCens, setPendingUpdateItemCens] = useState<Set<string>>(new Set());
+	const [pendingSaveNoteItemCens, setPendingSaveNoteItemCens] = useState<Set<string>>(new Set());
+	const [pendingCancelItemCens, setPendingCancelItemCens] = useState<Set<string>>(new Set());
+	const [pendingResendItemCens, setPendingResendItemCens] = useState<Set<string>>(new Set());
 	const [isCancelDialogOpen, setIsCancelDialogOpen] = useState(false);
-	const previousOrderIdRef = useRef<number | null>(null);
-	const orderStatusId = state?.restaurantOrder?.orderStatusId;
-	const allowCancelOrder = canCancelOrder(orderStatusId);
+
+	const ticketStatus = state?.ticket?.status;
+	const allowCancelTicket = canCancelOrder(ticketStatus);
 
 	useEffect(() => {
-		if (previousOrderIdRef.current === restaurantOrderId) {
-			return;
+		const nextNotes: Record<string, string> = {};
+		for (const item of ticketItems) {
+			nextNotes[item.ticketItemCen] = item.note ?? "";
 		}
-
-		previousOrderIdRef.current = restaurantOrderId;
-		setOrderItems(new Map());
-		setDraftQuantities({});
-		setPendingAddProductIds(new Set());
-		setPendingSaveNoteDetailIds(new Set());
-		setPendingCancelDetailIds(new Set());
-		setPendingResendDetailIds(new Set());
-	}, [restaurantOrderId]);
-
-	useEffect(() => {
-		if (!orderDetails) {
-			return;
-		}
-		const detailsMap: Map<number, OrderItem> = new Map();
-
-		for (let i = 0; i < orderDetails.length; i++) {
-			const sourceItem = orderDetails[i];
-			if (sourceItem.restaurantOrderStatusId === OrderDetailStatus.Canceled) {
-				continue;
-			}
-
-			if (!sourceItem.restaurantOrderDetailId) {
-				continue;
-			}
-
-			detailsMap.set(sourceItem.restaurantOrderDetailId, {
-				productId: sourceItem.productId,
-				name: sourceItem.name,
-				unitPrice: sourceItem.unitPrice,
-				quantity: sourceItem.quantity,
-				note: sourceItem.note,
-				restaurantOrderDetailId: sourceItem.restaurantOrderDetailId,
-				sentAt: sourceItem.sentAt,
-				restaurantOrderStatusId: sourceItem.restaurantOrderStatusId,
-				restaurantOrderStatus: sourceItem.restaurantOrderStatus,
-				resendCount: sourceItem.resendCount ?? 0,
-			});
-		}
-
-		setOrderItems(detailsMap);
-	}, [orderDetails]);
-
-	useEffect(() => {
-		if (products.length > 0) {
-			setStableProducts(products);
-		}
-	}, [products]);
+		setNotesByItemCen(nextNotes);
+	}, [ticketItems]);
 
 	const sortedProducts = useMemo(() => {
-		return [...stableProducts].sort((left, right) => left.name.localeCompare(right.name));
-	}, [stableProducts]);
+		return [...products].sort((left, right) => left.name.localeCompare(right.name));
+	}, [products]);
 
-	const itemsList = useMemo(() => {
-		return Array.from(orderItems.values()).sort((left, right) => {
-			const nameSort = left.name.localeCompare(right.name);
-			if (nameSort !== 0) {
-				return nameSort;
+	const rawActiveItems = useMemo(() => {
+		return ticketItems.filter((item) => normalizeOrderDetailStatus(item.status) !== OrderDetailStatus.Canceled);
+	}, [ticketItems]);
+
+	useEffect(() => {
+		setActiveItemOrder((previousOrder) => {
+			const activeItemCens = new Set(rawActiveItems.map((item) => item.ticketItemCen));
+			const nextOrder = previousOrder.filter((ticketItemCen) => activeItemCens.has(ticketItemCen));
+			const orderedItemCens = new Set(nextOrder);
+
+			for (const item of rawActiveItems) {
+				if (!orderedItemCens.has(item.ticketItemCen)) {
+					nextOrder.push(item.ticketItemCen);
+				}
 			}
 
-			return (left.restaurantOrderDetailId ?? 0) - (right.restaurantOrderDetailId ?? 0);
+			return nextOrder;
 		});
-	}, [orderItems]);
+	}, [rawActiveItems]);
 
-	const subtotal = useMemo(() => {
-		return itemsList.reduce((sum, item) => sum + item.quantity * item.unitPrice, 0);
-	}, [itemsList]);
+	const activeItems = useMemo(() => {
+		const activeItemsByCen = new Map(rawActiveItems.map((item) => [item.ticketItemCen, item]));
+		const orderedItems = activeItemOrder
+			.map((ticketItemCen) => activeItemsByCen.get(ticketItemCen))
+			.filter((item): item is TicketItem => Boolean(item));
+		const orderedItemCens = new Set(orderedItems.map((item) => item.ticketItemCen));
+		const newItems = rawActiveItems.filter((item) => !orderedItemCens.has(item.ticketItemCen));
 
-	const taxRate = taxQuery.data ?? 0;
-	const taxAmount = subtotal * (taxRate / 100);
-	const total = subtotal + taxAmount;
+		return [...orderedItems, ...newItems];
+	}, [activeItemOrder, rawActiveItems]);
 
-	const getDraftQuantity = (productId: number) => {
-		return draftQuantities[productId] ?? 1;
-	};
+	const subtotal = ticketTotals?.subtotal ?? activeItems.reduce((sum, item) => sum + item.quantity * item.unitPrice, 0);
+	const taxAmount = ticketTotals?.taxAmount ?? 0;
+	const total = ticketTotals?.total ?? subtotal + taxAmount;
 
-	const setDraftQuantity = (productId: number, nextValue: number) => {
+	const getDraftQuantity = (productCen: string) => draftQuantities[productCen] ?? 1;
+
+	const setDraftQuantity = (productCen: string, nextValue: number) => {
 		setDraftQuantities((previous) => ({
 			...previous,
-			[productId]: Number.isFinite(nextValue) && nextValue > 0 ? Math.floor(nextValue) : 1,
+			[productCen]: Number.isFinite(nextValue) && nextValue > 0 ? Math.floor(nextValue) : 1,
 		}));
 	};
 
-	const setAddPending = (productId: number, isPending: boolean) => {
-		setPendingAddProductIds((previous) => {
+	const setPending = (setter: Dispatch<SetStateAction<Set<string>>>, cen: string, isPending: boolean) => {
+		setter((previous) => {
 			const next = new Set(previous);
 			if (isPending) {
-				next.add(productId);
+				next.add(cen);
 			} else {
-				next.delete(productId);
+				next.delete(cen);
 			}
 			return next;
 		});
 	};
 
-	const setSaveNotePending = (restaurantOrderDetailId: number, isPending: boolean) => {
-		setPendingSaveNoteDetailIds((previous) => {
-			const next = new Set(previous);
-			if (isPending) {
-				next.add(restaurantOrderDetailId);
-			} else {
-				next.delete(restaurantOrderDetailId);
-			}
-			return next;
-		});
+	const getItemNotePayload = (item: TicketItem) => {
+		return (notesByItemCen[item.ticketItemCen] ?? item.note ?? "").trim() || null;
 	};
 
-	const setCancelPending = (restaurantOrderDetailId: number, isPending: boolean) => {
-		setPendingCancelDetailIds((previous) => {
-			const next = new Set(previous);
-			if (isPending) {
-				next.add(restaurantOrderDetailId);
-			} else {
-				next.delete(restaurantOrderDetailId);
-			}
-			return next;
-		});
-	};
-
-	const setResendPending = (restaurantOrderDetailId: number, isPending: boolean) => {
-		setPendingResendDetailIds((previous) => {
-			const next = new Set(previous);
-			if (isPending) {
-				next.add(restaurantOrderDetailId);
-			} else {
-				next.delete(restaurantOrderDetailId);
-			}
-			return next;
-		});
-	};
-
-	const canResendOrderItem = (item: OrderItem) => {
-		const statusId = getOrderItemStatusId(item);
-		return item.sentAt !== null && statusId !== OrderDetailStatus.Delivered && statusId !== OrderDetailStatus.Canceled;
-	};
-	const validateAvailableProduct = (product: AvailableOrderProduct) => {
-		if (!product.isAvailable || product.productStatus !== "Available") {
+	const validateProduct = (product: SalesCatalogProduct, requestedQuantity: number) => {
+		if (!product.isAvailable || product.availableQuantity <= 0) {
 			toast.error(`${product.name} no esta disponible para agregar.`);
+			return false;
+		}
+
+		if (requestedQuantity <= 0) {
+			toast.error("La cantidad debe ser mayor a cero.");
+			return false;
+		}
+
+		if (requestedQuantity > product.availableQuantity) {
+			toast.error(`Solo hay ${product.availableQuantity} unidades disponibles para ${product.name}.`);
 			return false;
 		}
 
 		return true;
 	};
 
-	const handleAddProduct = async (product: AvailableOrderProduct) => {
-		if (pendingAddProductIds.has(product.productId)) {
+	const handleAddProduct = async (product: SalesCatalogProduct) => {
+		if (pendingAddProductCens.has(product.productCen)) {
 			return;
 		}
 
-		setAddPending(product.productId, true);
+		const requestedQuantity = getDraftQuantity(product.productCen);
+		const mergeTarget = activeItems.find((item) => isMergeableTicketItem(item, product.productCen));
+		const finalQuantity = (mergeTarget?.quantity ?? 0) + requestedQuantity;
+		const quantityToValidate = mergeTarget ? finalQuantity : requestedQuantity;
 
+		if (!validateProduct(product, quantityToValidate)) {
+			return;
+		}
+
+		if (mergeTarget && pendingUpdateItemCens.has(mergeTarget.ticketItemCen)) {
+			return;
+		}
+
+		setPending(setPendingAddProductCens, product.productCen, true);
+		if (mergeTarget) {
+			setPending(setPendingUpdateItemCens, mergeTarget.ticketItemCen, true);
+		}
 		try {
-			if (!validateAvailableProduct(product)) {
-				return;
-			}
-
-			const requestedQuantity = getDraftQuantity(product.productId);
-			if (requestedQuantity <= 0) {
-				toast.error("La cantidad debe ser mayor a cero.");
-				return;
-			}
-
-			if (requestedQuantity > product.availableStock) {
-				toast.error(`Solo hay ${product.availableStock} unidades disponibles para ${product.name}.`);
-				return;
-			}
-
-			const editableCandidate = Array.from(orderItems.values())
-				.filter((item) => item.productId === product.productId && isEditableOrderItem(item))
-				.sort((left, right) => {
-					if (getOrderItemStatusId(left) !== getOrderItemStatusId(right)) {
-						if (getOrderItemStatusId(left) === OrderDetailStatus.Preparing) {
-							return -1;
-						}
-						if (getOrderItemStatusId(right) === OrderDetailStatus.Preparing) {
-							return 1;
-						}
-					}
-
-					return (right.restaurantOrderDetailId ?? 0) - (left.restaurantOrderDetailId ?? 0);
-				})[0];
-
-			const existingItem = editableCandidate;
-			if (!existingItem) {
-				const restaurantOrderDetailId = await createOrderDetail({
-					restaurantOrderId,
-					productId: product.productId,
+			if (mergeTarget) {
+				await updateTicketItem({
+					ticketItemCen: mergeTarget.ticketItemCen,
+					quantity: finalQuantity,
+					note: getItemNotePayload(mergeTarget),
+				});
+				toast.success(`${product.name} sumado al item pendiente.`);
+			} else {
+				await createTicketItem({
+					productCen: product.productCen,
 					quantity: requestedQuantity,
 					note: null,
 				});
-
-				setOrderItems((previous) => {
-					const next = new Map(previous);
-					next.set(restaurantOrderDetailId, {
-						productId: product.productId,
-						name: product.name,
-						unitPrice: product.sellPrice,
-						quantity: requestedQuantity,
-						note: "",
-						restaurantOrderDetailId,
-						sentAt: null,
-						restaurantOrderStatusId: OrderDetailStatus.Created,
-						restaurantOrderStatus: "Pendiente",
-						resendCount: 0,
-					});
-					return next;
-				});
 				toast.success(`${product.name} agregado correctamente.`);
-				return;
 			}
-
-			const nextQuantity = existingItem.quantity + requestedQuantity;
-			if (nextQuantity > product.availableStock) {
-				toast.error(`No puedes superar ${product.availableStock} unidades para ${product.name}.`);
-				return;
-			}
-
-			if (!existingItem.restaurantOrderDetailId) {
-				toast.error("No se pudo identificar el detalle del pedido para actualizar la cantidad.");
-				return;
-			}
-
-			await updateOrderDetail({
-				restaurantOrderDetailId: existingItem.restaurantOrderDetailId,
-				quantity: nextQuantity,
-				note: !existingItem.note?.trim() ? null : existingItem.note.trim(),
-			});
-
-			const existingDetailId = existingItem.restaurantOrderDetailId;
-			if (!existingDetailId) {
-				return;
-			}
-
-			setOrderItems((previous) => {
-				const next = new Map(previous);
-				next.set(existingDetailId, {
-					...existingItem,
-					quantity: nextQuantity,
-				});
-				return next;
-			});
-			toast.success(`Cantidad actualizada para ${product.name}.`);
 		} finally {
-			setAddPending(product.productId, false);
+			if (mergeTarget) {
+				setPending(setPendingUpdateItemCens, mergeTarget.ticketItemCen, false);
+			}
+			setPending(setPendingAddProductCens, product.productCen, false);
 		}
 	};
 
-	const handlePrintOrder = async () => {
-		try {
-			const { data: blob } = await orderPdfQuery.refetch();
-
-			if (!blob) return;
-
-			const url = URL.createObjectURL(blob);
-
-			window.open(url, "_blank");
-			URL.revokeObjectURL(url);
-		} catch {
-			toast.error("Error en la reimpresion de la orden");
-		}
-	};
-
-	const updateItemQuantity = async (item: OrderItem, product: AvailableOrderProduct, delta: 1 | -1) => {
-		if (!item.restaurantOrderDetailId) {
+	const updateItemQuantity = async (item: TicketItem, product: SalesCatalogProduct | undefined, delta: 1 | -1) => {
+		if (pendingUpdateItemCens.has(item.ticketItemCen)) {
 			return;
 		}
 
-		const currentItem = orderItems.get(item.restaurantOrderDetailId);
-		if (!currentItem || !currentItem.restaurantOrderDetailId) {
-			return;
-		}
-
-		const currentDetailId = currentItem.restaurantOrderDetailId;
-
-		if (!isEditableOrderItem(currentItem)) {
+		if (!isEditableTicketItem(item)) {
 			toast.error("Este item no se puede editar porque ya fue enviado o finalizado.");
 			return;
 		}
 
-		const nextQuantity = currentItem.quantity + delta;
+		const nextQuantity = item.quantity + delta;
 		if (nextQuantity <= 0) {
-			toast.error("La cantidad minima es 1. Si deseas quitarlo, por ahora reduce la cantidad manualmente.");
+			toast.error("La cantidad minima es 1. Para quitarlo, usa cancelar item.");
 			return;
 		}
 
-		if (nextQuantity > product.availableStock) {
-			toast.error(`No puedes superar ${product.availableStock} unidades para ${product.name}.`);
+		if (product && nextQuantity > product.availableQuantity) {
+			toast.error(`No puedes superar ${product.availableQuantity} unidades para ${product.name}.`);
 			return;
 		}
 
-		await updateOrderDetail({
-			restaurantOrderDetailId: currentItem.restaurantOrderDetailId,
-			quantity: nextQuantity,
-			note: !currentItem.note?.trim() ? null : currentItem.note.trim(),
-		});
-
-		setOrderItems((previous) => {
-			const next = new Map(previous);
-			next.set(currentDetailId, {
-				...currentItem,
+		setPending(setPendingUpdateItemCens, item.ticketItemCen, true);
+		try {
+			await updateTicketItem({
+				ticketItemCen: item.ticketItemCen,
 				quantity: nextQuantity,
+				note: getItemNotePayload(item),
 			});
-			return next;
-		});
+		} finally {
+			setPending(setPendingUpdateItemCens, item.ticketItemCen, false);
+		}
 	};
 
-	const handleCancelItem = async (restaurantOrderDetailId: number) => {
-		const target = orderItems.get(restaurantOrderDetailId);
-		if (!target || !target.restaurantOrderDetailId) {
+	const handleCancelItem = async (item: TicketItem) => {
+		if (pendingCancelItemCens.has(item.ticketItemCen)) {
 			return;
 		}
 
-		if (pendingCancelDetailIds.has(target.restaurantOrderDetailId)) {
-			return;
-		}
-
-		if (!canCancelFromPos(getOrderItemStatusId(target))) {
+		if (!canCancelFromPos(item.status)) {
 			toast.error("Solo se pueden cancelar items en estado Pendiente.");
 			return;
 		}
 
-		setCancelPending(target.restaurantOrderDetailId, true);
-
+		setPending(setPendingCancelItemCens, item.ticketItemCen, true);
 		try {
-			await cancelOrderDetail({
-				restaurantOrderDetailId: target.restaurantOrderDetailId,
-				newStatusId: OrderDetailStatus.Canceled,
+			await cancelTicketItem({
+				ticketItemCen: item.ticketItemCen,
+				status: OrderDetailStatus.Canceled,
 			});
-
-			setOrderItems((previous) => {
-				const next = new Map(previous);
-				next.delete(restaurantOrderDetailId);
-				return next;
-			});
-
-			toast.success(`${target.name} cancelado correctamente.`);
+			toast.success(`${item.productName} cancelado correctamente.`);
 		} catch {
 			toast.error("No se pudo cancelar el item. Intenta nuevamente.");
 		} finally {
-			setCancelPending(target.restaurantOrderDetailId, false);
+			setPending(setPendingCancelItemCens, item.ticketItemCen, false);
 		}
 	};
 
-	const handleNoteChange = (restaurantOrderDetailId: number, note: string) => {
-		setOrderItems((previous) => {
-			const target = previous.get(restaurantOrderDetailId);
-			if (!target) {
-				return previous;
-			}
-
-			const next = new Map(previous);
-			next.set(restaurantOrderDetailId, { ...target, note });
-			return next;
-		});
-	};
-
-	const handleResendItem = async (restaurantOrderDetailId: number) => {
-		const target = orderItems.get(restaurantOrderDetailId);
-		if (!target || !target.restaurantOrderDetailId) {
+	const handleSaveNote = async (item: TicketItem) => {
+		if (pendingUpdateItemCens.has(item.ticketItemCen) || pendingSaveNoteItemCens.has(item.ticketItemCen)) {
 			return;
 		}
 
-		if (pendingResendDetailIds.has(restaurantOrderDetailId)) {
-			return;
-		}
-
-		if (!canResendOrderItem(target)) {
-			toast.error("Solo se pueden reenviar items enviados que no esten en estado Listo o Cancelado.");
-			return;
-		}
-
-		setResendPending(restaurantOrderDetailId, true);
-
-		try {
-			await resendOrderDetail(restaurantOrderDetailId);
-			setOrderItems((previous) => {
-				const next = new Map(previous);
-				next.set(restaurantOrderDetailId, {
-					...target,
-					resendCount: (target.resendCount ?? 0) + 1,
-				});
-				return next;
-			});
-			toast.success(`Comanda reenviada para ${target.name}.`);
-		} catch {
-			toast.error("No se pudo reenviar la comanda. Intenta nuevamente.");
-		} finally {
-			setResendPending(restaurantOrderDetailId, false);
-		}
-	};
-
-	const handleSaveNote = async (restaurantOrderDetailId: number) => {
-		if (pendingSaveNoteDetailIds.has(restaurantOrderDetailId)) {
-			return;
-		}
-
-		const target = orderItems.get(restaurantOrderDetailId);
-		if (!target || !target.restaurantOrderDetailId) {
-			return;
-		}
-
-		if (!isEditableOrderItem(target)) {
+		if (!isEditableTicketItem(item)) {
 			toast.error("Este item no se puede editar porque ya fue enviado o finalizado.");
 			return;
 		}
 
-		setSaveNotePending(restaurantOrderDetailId, true);
-
+		setPending(setPendingSaveNoteItemCens, item.ticketItemCen, true);
 		try {
-			await updateOrderDetail({
-				restaurantOrderDetailId: target.restaurantOrderDetailId,
-				quantity: target.quantity,
-				note: !target.note?.trim() ? null : target.note.trim(),
+			await updateTicketItem({
+				ticketItemCen: item.ticketItemCen,
+				quantity: item.quantity,
+				note: getItemNotePayload(item),
 			});
-			toast.success(`Nota guardada para ${target.name}.`);
+			toast.success(`Nota guardada para ${item.productName}.`);
 		} finally {
-			setSaveNotePending(restaurantOrderDetailId, false);
+			setPending(setPendingSaveNoteItemCens, item.ticketItemCen, false);
 		}
 	};
 
-	const handleConfirmOrderCancellation = async () => {
-		if (!hasValidOrder) {
+	const handleResendItem = async (item: TicketItem) => {
+		if (pendingResendItemCens.has(item.ticketItemCen)) {
+			return;
+		}
+
+		if (!item.sentAt || normalizeOrderDetailStatus(item.status) === OrderDetailStatus.Canceled) {
+			toast.error("Solo se pueden reenviar items enviados que no esten cancelados.");
+			return;
+		}
+
+		setPending(setPendingResendItemCens, item.ticketItemCen, true);
+		try {
+			await resendTicketItem(item.ticketItemCen);
+			toast.success(`Comanda reenviada para ${item.productName}.`);
+		} catch {
+			toast.error("No se pudo reenviar la comanda. Intenta nuevamente.");
+		} finally {
+			setPending(setPendingResendItemCens, item.ticketItemCen, false);
+		}
+	};
+
+	const handlePrintTicket = async () => {
+		try {
+			const { data: blob } = await orderPdfQuery.refetch();
+			if (!blob) return;
+			const url = URL.createObjectURL(blob);
+			window.open(url, "_blank");
+			URL.revokeObjectURL(url);
+		} catch {
+			toast.error("Error al reimprimir el ticket.");
+		}
+	};
+
+	const handleConfirmTicketCancellation = async () => {
+		if (!hasValidCompany || !hasValidTicket) {
 			return;
 		}
 
 		try {
-			await cancelRestaurantOrder({ restaurantOrderId });
+			await cancelTicket({ companyCen, ticketCen });
 			toast.success("Cuenta cancelada correctamente.");
 			setIsCancelDialogOpen(false);
-			navigate("/sales/orders");
+			navigate("/sales/tickets");
 		} catch (error) {
 			const backendError = extractCancelOrderApiError(error);
-			if (backendError) {
-				toast.error(backendError);
-				return;
-			}
-
-			toast.error("No se pudo cancelar la cuenta. Intenta nuevamente.");
+			toast.error(backendError ?? "No se pudo cancelar la cuenta. Intenta nuevamente.");
 		}
 	};
 
-	if (!hasValidOrder) {
+	if (!hasValidTicket) {
 		return (
 			<Alert>
 				<CircleAlert className="size-4" />
-				<AlertTitle>Pedido invalido</AlertTitle>
-				<AlertDescription>No se encontro un identificador valido para el pedido seleccionado.</AlertDescription>
+				<AlertTitle>Ticket invalido</AlertTitle>
+				<AlertDescription>No se encontro un identificador CEN valido para el ticket seleccionado.</AlertDescription>
 			</Alert>
 		);
 	}
@@ -541,31 +361,29 @@ export default function OrderDetailPage() {
 				<div>
 					<div className="flex items-center gap-2">
 						<Badge variant="info">Punto de venta</Badge>
-						<Badge variant="outline">Detalle de orden</Badge>
-						{typeof orderStatusId === "number" ? (
-							<Badge variant={getOrderStatusBadgeVariant(orderStatusId)}>{getOrderStatusLabel(orderStatusId)}</Badge>
+						<Badge variant="outline">Detalle de ticket</Badge>
+						{ticketStatus ? (
+							<Badge variant={getOrderStatusBadgeVariant(ticketStatus)}>{getOrderStatusLabel(ticketStatus)}</Badge>
 						) : null}
 					</div>
 					<Title as="h1" className="mt-2">
-						Pedido #{state?.restaurantOrder?.dailyNumber ?? restaurantOrderId}
+						Ticket #{state?.ticket?.dailyNumber ?? ticketCen}
 					</Title>
 					<p className="mt-1 text-sm text-muted-foreground">
-						Gestiona productos, cantidades y notas de cocina en tiempo real.
+						Gestiona productos, cantidades y notas de cocina con identificadores CEN.
 					</p>
 				</div>
 
 				<div className="flex flex-col gap-2 lg:items-end">
-					<Button variant="outline" onClick={() => navigate("/sales/orders")} className="w-full">
+					<Button variant="outline" onClick={() => navigate("/sales/tickets")} className="w-full">
 						<ArrowLeft className="size-4" />
 						Volver a tickets
 					</Button>
-
-					<Button variant="outline" onClick={handlePrintOrder} className="w-full">
+					<Button variant="outline" onClick={() => void handlePrintTicket()} className="w-full">
 						<Printer className="size-4" />
 						Reimprimir
 					</Button>
-
-					{allowCancelOrder ? (
+					{allowCancelTicket ? (
 						<Button variant="destructive" onClick={() => setIsCancelDialogOpen(true)} className="w-full">
 							Cancelar cuenta
 						</Button>
@@ -573,97 +391,66 @@ export default function OrderDetailPage() {
 				</div>
 			</div>
 
+			{!hasValidCompany ? (
+				<Alert>
+					<CircleAlert className="size-4" />
+					<AlertTitle>Compania requerida</AlertTitle>
+					<AlertDescription>Selecciona una compania para consultar el ticket.</AlertDescription>
+				</Alert>
+			) : null}
+
 			{hasProductsError ? (
 				<Alert>
 					<CircleAlert className="size-4" />
 					<AlertTitle>Error al cargar productos</AlertTitle>
-					<AlertDescription>
-						Intenta recargar la pagina para volver a consultar el catalogo del pedido.
-					</AlertDescription>
+					<AlertDescription>Intenta recargar la pagina para volver a consultar el catalogo.</AlertDescription>
 				</Alert>
 			) : null}
 
-			<div className="grid gap-5 lg:grid-cols-[1.15fr_1fr]">
+			<div className="grid gap-5 lg:grid-cols-[1.3fr_1fr]">
 				<div className="space-y-5">
 					<Card>
 						<CardHeader>
 							<CardTitle>Items seleccionados</CardTitle>
-							<CardDescription>
-								Modifica cantidades y notas, reenvia comandas ya enviadas y usa reimpresion como accion placeholder.
-							</CardDescription>
+							<CardDescription>Modifica cantidades, notas y reenvia comandas ya enviadas.</CardDescription>
 						</CardHeader>
 						<CardContent className="space-y-4">
-							{itemsList.length === 0 ? (
+							{activeItems.length === 0 ? (
 								<div className="rounded-xl border border-dashed bg-muted/20 px-6 py-10 text-center">
-									<p className="text-sm font-medium text-text-primary">No hay productos en esta orden.</p>
-									<p className="mt-2 text-sm text-muted-foreground">
-										Agrega productos desde el catalogo para construir el pedido.
-									</p>
+									<p className="text-sm font-medium text-text-primary">No hay productos en este ticket.</p>
+									<p className="mt-2 text-sm text-muted-foreground">Agrega productos desde el catalogo.</p>
 								</div>
 							) : (
 								<div className="space-y-3">
-									{itemsList.map((item) => {
-										const product = products.find((candidate) => candidate.productId === item.productId);
+									{activeItems.map((item) => {
+										const product = products.find((candidate) => candidate.productCen === item.productCen);
 										const itemSubtotal = item.quantity * item.unitPrice;
-										const detailId = item.restaurantOrderDetailId;
+										const isUpdatePending = pendingUpdateItemCens.has(item.ticketItemCen);
 
 										return (
 											<OrderDetailItemCard
-												key={item.restaurantOrderDetailId}
-												item={item}
+												key={item.ticketItemCen}
+												item={{ ...item, note: notesByItemCen[item.ticketItemCen] ?? item.note }}
 												product={product}
-												statusLabel={getOrderDetailStatusLabel(
-													item.restaurantOrderStatusId,
-													item.restaurantOrderStatus,
-												)}
+												statusLabel={getOrderDetailStatusLabel(item.status)}
 												itemSubtotal={itemSubtotal}
-												isEditable={isEditableOrderItem(item)}
-												canCancel={canCancelFromPos(getOrderItemStatusId(item))}
-												canResend={canResendOrderItem(item)}
-												isUpdatingOrderDetail={isUpdatingOrderDetail}
-												isCancelingOrderDetail={isCancelingOrderDetail}
-												isResendingOrderDetail={isResendingOrderDetail}
-												isCancelPending={detailId ? pendingCancelDetailIds.has(detailId) : false}
-												isResendPending={detailId ? pendingResendDetailIds.has(detailId) : false}
-												isSaveNotePending={detailId ? pendingSaveNoteDetailIds.has(detailId) : false}
-												onDecreaseQuantity={() => {
-													if (product) {
-														void updateItemQuantity(item, product, -1);
-													}
-												}}
-												onIncreaseQuantity={() => {
-													if (product) {
-														void updateItemQuantity(item, product, 1);
-													}
-												}}
-												onCancelItem={() => {
-													if (!detailId) {
-														return;
-													}
-
-													void handleCancelItem(detailId);
-												}}
-												onResendItem={() => {
-													if (!detailId) {
-														return;
-													}
-
-													void handleResendItem(detailId);
-												}}
+												isEditable={isEditableTicketItem(item)}
+												canCancel={canCancelFromPos(item.status)}
+												canResend={Boolean(item.sentAt) && normalizeOrderDetailStatus(item.status) !== OrderDetailStatus.Canceled}
+												isUpdatingOrderDetail={isUpdatePending}
+												isCancelingOrderDetail={pendingCancelItemCens.has(item.ticketItemCen)}
+												isResendingOrderDetail={pendingResendItemCens.has(item.ticketItemCen)}
+												isCancelPending={pendingCancelItemCens.has(item.ticketItemCen)}
+												isResendPending={pendingResendItemCens.has(item.ticketItemCen)}
+												isSaveNotePending={pendingSaveNoteItemCens.has(item.ticketItemCen)}
+												onDecreaseQuantity={() => void updateItemQuantity(item, product, -1)}
+												onIncreaseQuantity={() => void updateItemQuantity(item, product, 1)}
+												onCancelItem={() => void handleCancelItem(item)}
+												onResendItem={() => void handleResendItem(item)}
 												onNoteChange={(note) => {
-													if (!detailId) {
-														return;
-													}
-
-													handleNoteChange(detailId, note);
+													setNotesByItemCen((previous) => ({ ...previous, [item.ticketItemCen]: note }));
 												}}
-												onSaveNote={() => {
-													if (!detailId) {
-														return;
-													}
-
-													void handleSaveNote(detailId);
-												}}
+												onSaveNote={() => void handleSaveNote(item)}
 											/>
 										);
 									})}
@@ -673,10 +460,10 @@ export default function OrderDetailPage() {
 							<Button
 								className="w-full"
 								onClick={async () => {
-									await sendOrderToTeam();
-									toast.success("Orden correctamente enviado a los equipos correspondientes");
+									await sendTicketToKds();
+									toast.success("Orden enviada a los equipos correspondientes.");
 								}}
-								disabled={itemsList?.every((item) => item.sentAt !== null && item.sentAt !== undefined)}
+								disabled={activeItems.length === 0 || activeItems.every((item) => item.sentAt)}
 							>
 								Enviar orden
 							</Button>
@@ -685,7 +472,7 @@ export default function OrderDetailPage() {
 
 					<Card>
 						<CardHeader>
-							<CardTitle>Totales del pedido</CardTitle>
+							<CardTitle>Totales del ticket</CardTitle>
 						</CardHeader>
 						<CardContent className="space-y-3">
 							<div className="flex items-center justify-between text-sm">
@@ -693,19 +480,14 @@ export default function OrderDetailPage() {
 								<span className="font-medium">{fCurrency(subtotal)}</span>
 							</div>
 							<div className="flex items-center justify-between text-sm">
-								<span className="text-muted-foreground">Impuesto ({taxRate}%)</span>
-								<span className="font-medium">{fCurrency(taxAmount)}</span>
+								<span className="text-muted-foreground">Impuesto</span>
+								<span className="font-medium">{taxAmount}%</span>
 							</div>
 							<div className="h-px bg-border" />
 							<div className="flex items-center justify-between text-base font-semibold">
 								<span>Total</span>
 								<span>{fCurrency(total)}</span>
 							</div>
-							{taxQuery.isError ? (
-								<p className="text-xs text-warning">
-									No se pudo obtener el impuesto global. Se usara 0% temporalmente.
-								</p>
-							) : null}
 						</CardContent>
 					</Card>
 				</div>
@@ -716,28 +498,22 @@ export default function OrderDetailPage() {
 							<ShoppingBasket className="size-5 text-primary" />
 							Catalogo de productos
 						</CardTitle>
-						<CardDescription>Selecciona productos disponibles para agregarlos al pedido.</CardDescription>
+						<CardDescription>Selecciona productos vendibles del catalogo Sales/Inventory.</CardDescription>
 					</CardHeader>
 					<CardContent className="space-y-3">
 						{isLoadingProducts && sortedProducts.length === 0 ? (
 							<p className="text-sm text-muted-foreground">Cargando catalogo...</p>
 						) : null}
-						{sortedProducts.map((product) => {
-							return (
-								<ProductCatalogItemCard
-									key={product.productId}
-									product={product}
-									draftQuantity={getDraftQuantity(product.productId)}
-									isAddPending={pendingAddProductIds.has(product.productId)}
-									onDraftQuantityChange={(value) => {
-										setDraftQuantity(product.productId, value);
-									}}
-									onAddProduct={() => {
-										void handleAddProduct(product);
-									}}
-								/>
-							);
-						})}
+						{sortedProducts.map((product) => (
+							<ProductCatalogItemCard
+								key={product.productCen}
+								product={product}
+								draftQuantity={getDraftQuantity(product.productCen)}
+								isAddPending={pendingAddProductCens.has(product.productCen)}
+								onDraftQuantityChange={(value) => setDraftQuantity(product.productCen, value)}
+								onAddProduct={() => void handleAddProduct(product)}
+							/>
+						))}
 					</CardContent>
 				</Card>
 			</div>
@@ -749,19 +525,11 @@ export default function OrderDetailPage() {
 						<DialogDescription>Esta accion cancelara la cuenta y todos sus items. Deseas continuar?</DialogDescription>
 					</DialogHeader>
 					<DialogFooter>
-						<Button
-							variant="outline"
-							onClick={() => setIsCancelDialogOpen(false)}
-							disabled={isCancelingRestaurantOrder}
-						>
+						<Button variant="outline" onClick={() => setIsCancelDialogOpen(false)} disabled={isCancelingTicket}>
 							Cerrar
 						</Button>
-						<Button
-							variant="destructive"
-							onClick={() => void handleConfirmOrderCancellation()}
-							disabled={isCancelingRestaurantOrder}
-						>
-							{isCancelingRestaurantOrder ? "Cancelando..." : "Confirmar cancelacion"}
+						<Button variant="destructive" onClick={() => void handleConfirmTicketCancellation()} disabled={isCancelingTicket}>
+							{isCancelingTicket ? "Cancelando..." : "Confirmar cancelacion"}
 						</Button>
 					</DialogFooter>
 				</DialogContent>

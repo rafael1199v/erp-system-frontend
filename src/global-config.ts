@@ -16,6 +16,10 @@ export type GlobalConfig = {
 	apiBaseUrl: string;
 	/** Routing mode: frontend routing or backend routing */
 	routerMode: "frontend" | "backend";
+
+	// inventoryBaseUrl: string;
+
+	// salesBaseUrl: string;
 };
 
 /**
@@ -32,4 +36,6 @@ export const GLOBAL_CONFIG: GlobalConfig = {
 	publicPath: import.meta.env.VITE_APP_PUBLIC_PATH || "/",
 	apiBaseUrl: import.meta.env.VITE_APP_API_BASE_URL || "/api",
 	routerMode: import.meta.env.VITE_APP_ROUTER_MODE || "frontend",
+	// inventoryBaseUrl: import.meta.env.VITE_APP_INVENTORY_BASE_URL || "/api",
+	// salesBaseUrl: import.meta.env.VITE_APP_SALES_BASE_URL || "/api",
 };

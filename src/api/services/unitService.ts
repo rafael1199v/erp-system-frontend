@@ -1,32 +1,32 @@
-import type { Unit, CreateUnit } from "@/types/unit";
+import type { CreateUnit, Unit } from "@/types/unit";
 import apiClient from "../apiClient";
 
 export enum UnitApi {
-  Unit = "/inventory/unit",
+	Inventory = "/inventory",
 }
 
-const getUnits = (companyId: string) => {
-  return apiClient.get<Unit[]>({
-    url: `${UnitApi.Unit}/${companyId}`
-  });
-}
+const getUnits = (companyCen: string) => {
+	return apiClient.get<Unit[]>({
+		url: `${UnitApi.Inventory}/companies/${encodeURIComponent(companyCen)}/units`,
+	});
+};
 
-const createUnit = (unit: CreateUnit) => {
-  return apiClient.post<void>({
-    url: `${UnitApi.Unit}`,
-    data: unit
-  });
-}
+const createUnit = (companyCen: string, unit: CreateUnit) => {
+	return apiClient.post<Unit>({
+		url: `${UnitApi.Inventory}/companies/${encodeURIComponent(companyCen)}/units`,
+		data: unit,
+	});
+};
 
-const updateUnit = (unit: Unit) =>{
-  return apiClient.put<void>({
-    url: `${UnitApi.Unit}`,
-    data: unit
-  });
-}
+const updateUnit = (companyCen: string, unitCen: string, unit: CreateUnit) => {
+	return apiClient.put<Unit>({
+		url: `${UnitApi.Inventory}/companies/${encodeURIComponent(companyCen)}/units/${encodeURIComponent(unitCen)}`,
+		data: unit,
+	});
+};
 
 export default {
-  getUnits,
-  createUnit,
-  updateUnit
+	getUnits,
+	createUnit,
+	updateUnit,
 };

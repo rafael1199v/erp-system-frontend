@@ -1,34 +1,52 @@
-export type CreateOrderRequest = {
-	companyId: number;
+export type TicketStatus = "created" | "open" | "paid" | "Paid" | "canceled" | "cancelled" | string;
+
+export type CreateTicketRequest = {
+	waiterCen?: string | null;
 };
 
-export type CreateOrderResponse = {
-	restaurantOrderId: number;
-};
-
-export type RestaurantOrder = {
-	id: number;
+export type Ticket = {
+	ticketCen: string;
 	dailyNumber: number;
-	orderDatetime: string;
-	orderStatusId: number;
-	customerId?: number | null;
-	taxPrice: number;
-	restaurantOrderId: number;
-	waiterId?: number | null;
+	status: TicketStatus;
+	createdAt: string;
+	waiterCen?: string | null;
+	companyCen?: string | null;
+	taxAmount: number;
 };
 
-export type AssignWaiter = {
-	restaurantOrderId: number;
-	waiterId: number;
+export type AssignTicketWaiterRequest = {
+	waiterCen: string;
 };
 
-export type CancelRestaurantOrderDto = {
-	restaurantOrderId: number;
+export type AssignTicketWaiterResponse = {
+	ticketCen: string;
+	waiterCen: string;
+	waiterName: string;
+};
+
+export type CancelTicketRequest = {
+	reason?: string | null;
+};
+
+export type CancelTicketResponse = {
+	ticketCen: string;
+	status: string;
+};
+
+export type TicketTotals = {
+	ticketCen: string;
+	subtotal: number;
+	taxAmount: number;
+	total: number;
 };
 
 export type BackendStringError = string;
 
 export type Waiter = {
-	id: number;
+	waiterCen: string;
 	name: string;
+};
+
+export type TicketLocationState = {
+	ticket?: Ticket;
 };

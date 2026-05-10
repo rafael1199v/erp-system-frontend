@@ -1,15 +1,16 @@
 import { useQuery } from "@tanstack/react-query";
 import dashboardApi from "../api/dashboardApi";
 import { extractDashboardApiError } from "./extract-dashboard-api-error";
+import { normalizeCen } from "@/feature/sales/utils/cen";
 
-export const useDashboardDailySales = (companyId: number | null) => {
-	const normalizedCompanyId = companyId ?? -1;
+export const useDashboardDailySales = (companyCen: string | null) => {
+	const normalizedCompanyCen = normalizeCen(companyCen);
 	const query = useQuery({
-		queryKey: ["dashboard-daily-sales", normalizedCompanyId] as const,
+		queryKey: ["dashboard-daily-sales", normalizedCompanyCen] as const,
 		queryFn: async () => {
-			return (await dashboardApi.getDailySales(normalizedCompanyId)).data;
+			return (await dashboardApi.getDailySales(normalizedCompanyCen ?? "")).data;
 		},
-		enabled: normalizedCompanyId > 0,
+		enabled: normalizedCompanyCen !== null,
 	});
 
 	return {

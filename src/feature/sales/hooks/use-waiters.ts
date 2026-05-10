@@ -1,14 +1,15 @@
 import { useQuery } from "@tanstack/react-query";
 import waiterApi from "../api/waiterApi";
+import { normalizeCen } from "../utils/cen";
 
-export const useWaiters = (companyId: number | null) => {
-	const normalizedCompanyId = companyId ?? -1;
+export const useWaiters = (companyCen: string | null) => {
+	const normalizedCompanyCen = normalizeCen(companyCen);
 
 	return useQuery({
-		queryKey: ["sales-waiters", normalizedCompanyId],
+		queryKey: ["sales-waiters", normalizedCompanyCen],
 		queryFn: async () => {
-			return (await waiterApi.getWaiters(normalizedCompanyId)).data;
+			return (await waiterApi.getWaiters(normalizedCompanyCen ?? "")).data;
 		},
-		enabled: normalizedCompanyId > 0
+		enabled: normalizedCompanyCen !== null,
 	});
 };

@@ -1,90 +1,94 @@
-import { useMemo } from "react";
 import { useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMemo } from "react";
 import kdsApi from "../api/kdsApi";
-import { getOrderDetailStatusLabel } from "../enums/kds";
-import type { UpdateOrderDetailStatusRequest } from "../types/order-detail";
-import type { KdsTeam, KdsTeamItem } from "../types/kds";
+import type { KdsTeam, KdsTeamItem, UpdateKdsItemStatusRequest } from "../types/kds";
+import { normalizeCen } from "../utils/cen";
 
-export const useKds = (companyId: number | null) => {
-	const normalizedCompanyId = companyId ?? -1;
+type UpdateKdsItemStatusMutationPayload = UpdateKdsItemStatusRequest & {
+	ticketItemCen: string;
+};
+
+export const useKds = (companyCen: string | null) => {
+	const normalizedCompanyCen = normalizeCen(companyCen);
 	const queryClient = useQueryClient();
 
 	const teamsQuery = useQuery({
-		queryKey: ["sales-kds-teams", normalizedCompanyId],
+		queryKey: ["sales-kds-teams", normalizedCompanyCen],
 		queryFn: async () => {
-			const response = await kdsApi.getTeamsByCompany(normalizedCompanyId);
+			const response = await kdsApi.getTeamsByCompany(normalizedCompanyCen ?? "");
 			return response.data;
 		},
-		enabled: normalizedCompanyId > 0,
+		enabled: normalizedCompanyCen !== null,
 	});
 
 	const teams = teamsQuery.data ?? ([] as KdsTeam[]);
 
 	const teamItemsQueries = useQueries({
 		queries: teams.map((team) => ({
-			queryKey: ["sales-kds-team-items", normalizedCompanyId, team.id],
+			queryKey: ["sales-kds-team-items", normalizedCompanyCen, team.teamCen],
 			queryFn: async () => {
-				const response = await kdsApi.getTeamItems(normalizedCompanyId, team.id);
+				const response = await kdsApi.getTeamItems(normalizedCompanyCen ?? "", team.teamCen);
 				return response.data;
 			},
-			enabled: normalizedCompanyId > 0,
+			enabled: normalizedCompanyCen !== null,
 		})),
 	});
 
 	const itemsByTeamId = useMemo(() => {
-		const mapped: Record<number, KdsTeamItem[]> = {};
+		const mapped: Record<string, KdsTeamItem[]> = {};
 
 		for (let i = 0; i < teams.length; i++) {
-			mapped[teams[i].id] = teamItemsQueries[i]?.data ?? [];
+			mapped[teams[i].teamCen] = teamItemsQueries[i]?.data ?? [];
 		}
 
 		return mapped;
 	}, [teams, teamItemsQueries]);
 
 	const isLoadingItemsByTeamId = useMemo(() => {
-		const mapped: Record<number, boolean> = {};
+		const mapped: Record<string, boolean> = {};
 
 		for (let i = 0; i < teams.length; i++) {
-			mapped[teams[i].id] = teamItemsQueries[i]?.isLoading ?? false;
+			mapped[teams[i].teamCen] = teamItemsQueries[i]?.isLoading ?? false;
 		}
 
 		return mapped;
 	}, [teams, teamItemsQueries]);
 
 	const hasItemsErrorByTeamId = useMemo(() => {
-		const mapped: Record<number, boolean> = {};
+		const mapped: Record<string, boolean> = {};
 
 		for (let i = 0; i < teams.length; i++) {
-			mapped[teams[i].id] = teamItemsQueries[i]?.isError ?? false;
+			mapped[teams[i].teamCen] = teamItemsQueries[i]?.isError ?? false;
 		}
 
 		return mapped;
 	}, [teams, teamItemsQueries]);
 
 	const updateItemStatusMutation = useMutation({
-		mutationFn: async (payload: UpdateOrderDetailStatusRequest) => {
-			await kdsApi.updateRestaurantOrderDetailStatus(payload);
+		mutationFn: async (payload: UpdateKdsItemStatusMutationPayload) => {
+			await kdsApi.updateTicketItemStatus(normalizedCompanyCen ?? "", payload.ticketItemCen, {
+				status: payload.status,
+			});
 		},
 		onMutate: async (payload) => {
-			const previousItemsByTeamId: Record<number, KdsTeamItem[] | undefined> = {};
+			const previousItemsByTeamId: Record<string, KdsTeamItem[] | undefined> = {};
 
 			for (let i = 0; i < teams.length; i++) {
-				const teamId = teams[i].id;
-				const queryKey = ["sales-kds-team-items", normalizedCompanyId, teamId] as const;
+				const teamCen = teams[i].teamCen;
+				const queryKey = ["sales-kds-team-items", normalizedCompanyCen, teamCen] as const;
 
 				await queryClient.cancelQueries({ queryKey });
-				previousItemsByTeamId[teamId] = queryClient.getQueryData<KdsTeamItem[]>(queryKey);
+				previousItemsByTeamId[teamCen] = queryClient.getQueryData<KdsTeamItem[]>(queryKey);
 
 				queryClient.setQueryData<KdsTeamItem[]>(queryKey, (previous = []) => {
 					return previous.map((item) => {
-						if (item.restaurantOrderDetailId !== payload.restaurantOrderDetailId) {
+						if (item.ticketItemCen !== payload.ticketItemCen) {
 							return item;
 						}
 
 						return {
 							...item,
-							orderItemStatusId: payload.newStatusId,
-							orderItemStatus: getOrderDetailStatusLabel(payload.newStatusId, item.orderItemStatus),
+							status: payload.status,
 						};
 					});
 				});
@@ -98,20 +102,20 @@ export const useKds = (companyId: number | null) => {
 			}
 
 			for (let i = 0; i < teams.length; i++) {
-				const teamId = teams[i].id;
-				const previous = context.previousItemsByTeamId[teamId];
+				const teamCen = teams[i].teamCen;
+				const previous = context.previousItemsByTeamId[teamCen];
 				if (!previous) {
 					continue;
 				}
 
-				queryClient.setQueryData(["sales-kds-team-items", normalizedCompanyId, teamId], previous);
+				queryClient.setQueryData(["sales-kds-team-items", normalizedCompanyCen, teamCen], previous);
 			}
 		},
 		onSettled: async () => {
 			await Promise.all(
 				teams.map((team) =>
 					queryClient.invalidateQueries({
-						queryKey: ["sales-kds-team-items", normalizedCompanyId, team.id],
+						queryKey: ["sales-kds-team-items", normalizedCompanyCen, team.teamCen],
 					}),
 				),
 			);
@@ -133,7 +137,7 @@ export const useKds = (companyId: number | null) => {
 		hasItemsErrorByTeamId,
 		refreshAll,
 		isUpdatingItemStatus: updateItemStatusMutation.isPending,
-		updateItemStatus: async (payload: UpdateOrderDetailStatusRequest) => {
+		updateItemStatus: async (payload: UpdateKdsItemStatusMutationPayload) => {
 			await updateItemStatusMutation.mutateAsync(payload);
 		},
 	};

@@ -1,70 +1,85 @@
+import type {
+	CreateProduct,
+	Product,
+	ProductCatalog,
+	ProductContractStatus,
+	StockItem,
+	UpdateProduct,
+} from "@/types/product";
 import apiClient from "../apiClient";
 
-import type { CreateProduct, Product, ProductCatalog, ProductWithWarehouses, UpdateProduct } from "@/types/product";
-
 export enum ProductApi {
-  Company = "/inventory/company",
-  Product = "/inventory/product"
+	Inventory = "/inventory",
 }
 
-const getProductCatalog = (companyId: string) => {
-    return apiClient.get<ProductCatalog[]>({
-        url: `${ProductApi.Company}/${companyId}/products`
-    });
-}
+type ProductFilters = {
+	search?: string;
+	categoryCen?: string;
+	status?: ProductContractStatus;
+};
 
-const getProductsWithWarehouses = (companyId: string) => {
-    return apiClient.get<ProductWithWarehouses[]>({
-        url: `${ProductApi.Product}/stock/warehouses/${companyId}`
-    })
-}
+const toQueryString = (filters?: ProductFilters) => {
+	const params = new URLSearchParams();
+	if (filters?.search) params.set("search", filters.search);
+	if (filters?.categoryCen) params.set("categoryCen", filters.categoryCen);
+	if (filters?.status) params.set("status", filters.status);
+	const queryString = params.toString();
+	return queryString ? `?${queryString}` : "";
+};
 
-const createProduct = (product: CreateProduct) => {
-    return apiClient.post<void>({
-        url: `${ProductApi.Product}`,
-        data: product
-    });
-}
+const getProductCatalog = (companyCen: string, filters?: ProductFilters) => {
+	return apiClient.get<ProductCatalog[]>({
+		url: `${ProductApi.Inventory}/companies/${encodeURIComponent(companyCen)}/products${toQueryString(filters)}`,
+	});
+};
 
-const getProductWithCompany = (productId: number) => {
-    return apiClient.get<Product>({
-        url: `${ProductApi.Product}/with-company/${productId}`
-    });
-}
+const getStock = (companyCen: string) => {
+	return apiClient.get<StockItem[]>({
+		url: `${ProductApi.Inventory}/companies/${encodeURIComponent(companyCen)}/stock`,
+	});
+};
 
-const updateProduct = (product: UpdateProduct) => {
-    return apiClient.put<void>({
-        url: `${ProductApi.Product}`,
-        data: product
-    })
-}
+const createProduct = (companyCen: string, product: CreateProduct) => {
+	return apiClient.post<Product>({
+		url: `${ProductApi.Inventory}/companies/${encodeURIComponent(companyCen)}/products`,
+		data: product,
+	});
+};
 
-const activateProduct = (productId: number, companyId: number) => {
-    return apiClient.post<void>({
-        url: `${ProductApi.Product}/activate`,
-        data: {
-            productId: productId,
-            companyId: companyId
-        }
-    })
-}
+const saveProduct = (companyCen: string, productCen: string, product: UpdateProduct) => {
+	return apiClient.put<Product>({
+		url: `${ProductApi.Inventory}/companies/${encodeURIComponent(companyCen)}/products/${encodeURIComponent(productCen)}`,
+		data: product,
+	});
+};
 
-const deactivateProduct = (productId: number, companyId: number) => {
-    return apiClient.post<void>({
-        url: `${ProductApi.Product}/deactivate`,
-        data: {
-            productId: productId,
-            companyId: companyId
-        }
-    })
-}
+const updateProductStatus = (
+	companyCen: string,
+	productCen: string,
+	status: ProductContractStatus,
+	reason?: string,
+) => {
+	return apiClient.patch<Product>({
+		url: `${ProductApi.Inventory}/companies/${encodeURIComponent(companyCen)}/products/${encodeURIComponent(productCen)}/status`,
+		data: {
+			status,
+			reason: reason ?? null,
+		},
+	});
+};
+
+const activateProduct = (companyCen: string, productCen: string) =>
+	updateProductStatus(companyCen, productCen, "ACTIVE");
+
+const deactivateProduct = (companyCen: string, productCen: string) =>
+	updateProductStatus(companyCen, productCen, "INACTIVE");
 
 export default {
-    getProductCatalog,
-    getProductsWithWarehouses,
-    createProduct,
-    getProductWithCompany,
-    updateProduct,
-    activateProduct,
-    deactivateProduct
-}
+	getProductCatalog,
+	getStock,
+	createProduct,
+	updateProduct: saveProduct,
+	activateProduct,
+	deactivateProduct,
+	updateProductStatus,
+};

@@ -1,78 +1,84 @@
 import apiClient from "@/api/apiClient";
 import type {
-	RestaurantOrder,
-	CreateOrderRequest,
-	CreateOrderResponse,
-	AssignWaiter,
-	CancelRestaurantOrderDto,
+	AssignTicketWaiterRequest,
+	AssignTicketWaiterResponse,
+	CancelTicketRequest,
+	CancelTicketResponse,
+	CreateTicketRequest,
+	Ticket,
+	TicketTotals,
 } from "../types/order";
-import type { OrderItem } from "../types/order-detail";
+import type { TicketItem } from "../types/order-detail";
 
 export enum SalesOrderApi {
-	Order = "/sales/order",
+	Sales = "/sales",
 }
 
-const createOrder = (payload: CreateOrderRequest) => {
-	return apiClient.post<CreateOrderResponse>({
-		url: SalesOrderApi.Order,
+const companyTicketsUrl = (companyCen: string) =>
+	`${SalesOrderApi.Sales}/companies/${encodeURIComponent(companyCen)}/tickets`;
+
+const ticketUrl = (companyCen: string, ticketCen: string) =>
+	`${companyTicketsUrl(companyCen)}/${encodeURIComponent(ticketCen)}`;
+
+const createTicket = (companyCen: string, payload: CreateTicketRequest = {}) => {
+	return apiClient.post<Ticket>({
+		url: companyTicketsUrl(companyCen),
 		data: payload,
 	});
 };
 
-const getDailyOrders = (companyId: number) => {
-	return apiClient.get<RestaurantOrder[]>({
-		url: `${SalesOrderApi.Order}/${companyId}`,
+const getDailyTickets = (companyCen: string) => {
+	return apiClient.get<Ticket[]>({
+		url: companyTicketsUrl(companyCen),
 	});
 };
 
-const assignWaiter = (assignWaiterRequest: AssignWaiter) => {
-	return apiClient.put<void>({
-		url: `${SalesOrderApi.Order}/assign`,
-		data: assignWaiterRequest,
+const assignWaiter = (companyCen: string, ticketCen: string, payload: AssignTicketWaiterRequest) => {
+	return apiClient.put<AssignTicketWaiterResponse>({
+		url: `${ticketUrl(companyCen, ticketCen)}/waiter`,
+		data: payload,
 	});
 };
 
-const getOrderDetails = (restaurantOrderId: number) => {
-	return apiClient.get<OrderItem[]>({
-		url: `${SalesOrderApi.Order}/details/${restaurantOrderId}`,
+const getTicketItems = (companyCen: string, ticketCen: string) => {
+	return apiClient.get<TicketItem[]>({
+		url: `${ticketUrl(companyCen, ticketCen)}/items`,
 	});
 };
 
-const sendOrderToTeams = (restaurantOrderId: number) => {
-	return apiClient.request<void>({
-		url: `${SalesOrderApi.Order}/details/${restaurantOrderId}`,
-		method: "PATCH",
+const sendTicketToKds = (companyCen: string, ticketCen: string) => {
+	return apiClient.post<TicketItem[]>({
+		url: `${ticketUrl(companyCen, ticketCen)}/send`,
 	});
 };
 
-const getOrderTax = (restaurantOrderId: number) => {
-	return apiClient.get<number>({
-		url: `${SalesOrderApi.Order}/tax/${restaurantOrderId}`,
+const getTicketTotals = (companyCen: string, ticketCen: string) => {
+	return apiClient.get<TicketTotals>({
+		url: `${ticketUrl(companyCen, ticketCen)}/totals`,
 	});
 };
 
-const getOrderPdf = (restaurantOrderId: number) => {
+const getTicketPdf = (companyCen: string, ticketCen: string) => {
 	return apiClient.get<Blob>({
-		url: `${SalesOrderApi.Order}/${restaurantOrderId}/print`,
+		url: `${ticketUrl(companyCen, ticketCen)}/print`,
 		responseType: "blob",
 	});
 };
 
-const cancelOrder = (payload: CancelRestaurantOrderDto) => {
-	return apiClient.request<void>({
-		url: `${SalesOrderApi.Order}/cancel`,
-		method: "PATCH",
+const cancelTicket = (companyCen: string, ticketCen: string, payload: CancelTicketRequest = {}) => {
+	return apiClient.post<CancelTicketResponse>({
+		url: `${ticketUrl(companyCen, ticketCen)}/cancel`,
 		data: payload,
 	});
 };
 
 export default {
-	createOrder,
-	getDailyOrders,
+	createTicket,
+	getDailyTickets,
 	assignWaiter,
-	getOrderDetails,
-	sendOrderToTeams,
-	getOrderTax,
-	getOrderPdf,
-	cancelOrder,
+	getTicketItems,
+	sendTicketToKds,
+	getTicketTotals,
+	getTicketPdf,
+	cancelTicket,
 };

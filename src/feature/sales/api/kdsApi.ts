@@ -1,27 +1,27 @@
 import apiClient from "@/api/apiClient";
-import type { UpdateOrderDetailStatusRequest } from "../types/order-detail";
-import type { KdsTeam, KdsTeamItem } from "../types/kds";
+import type { KdsStatusUpdateResponse, KdsTeam, KdsTeamItem, UpdateKdsItemStatusRequest } from "../types/kds";
 
 export enum SalesKdsApi {
-	Kds = "/sales/kds",
+	Sales = "/sales",
 }
 
-const getTeamsByCompany = (companyId: number) => {
+const companyKdsUrl = (companyCen: string) => `${SalesKdsApi.Sales}/companies/${encodeURIComponent(companyCen)}/kds`;
+
+const getTeamsByCompany = (companyCen: string) => {
 	return apiClient.get<KdsTeam[]>({
-		url: `${SalesKdsApi.Kds}/${companyId}/teams`,
+		url: `${companyKdsUrl(companyCen)}/teams`,
 	});
 };
 
-const getTeamItems = (companyId: number, teamId: number) => {
+const getTeamItems = (companyCen: string, teamCen: string) => {
 	return apiClient.get<KdsTeamItem[]>({
-		url: `${SalesKdsApi.Kds}/${companyId}/teams/${teamId}/items`,
+		url: `${companyKdsUrl(companyCen)}/teams/${encodeURIComponent(teamCen)}/items`,
 	});
 };
 
-const updateRestaurantOrderDetailStatus = (payload: UpdateOrderDetailStatusRequest) => {
-	return apiClient.request<void>({
-		url: `${SalesKdsApi.Kds}/restaurant-order-detail`,
-		method: "PATCH",
+const updateTicketItemStatus = (companyCen: string, ticketItemCen: string, payload: UpdateKdsItemStatusRequest) => {
+	return apiClient.patch<KdsStatusUpdateResponse>({
+		url: `${companyKdsUrl(companyCen)}/items/${encodeURIComponent(ticketItemCen)}/status`,
 		data: payload,
 	});
 };
@@ -29,5 +29,5 @@ const updateRestaurantOrderDetailStatus = (payload: UpdateOrderDetailStatusReque
 export default {
 	getTeamsByCompany,
 	getTeamItems,
-	updateRestaurantOrderDetailStatus,
+	updateTicketItemStatus,
 };

@@ -1,10 +1,10 @@
+import { CircleAlert } from "lucide-react";
+import { useMemo } from "react";
 import { Alert, AlertDescription, AlertTitle } from "@/ui/alert";
 import { Badge } from "@/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/ui/card";
-import { CircleAlert } from "lucide-react";
-import { useMemo } from "react";
-import { OrderDetailStatus } from "../enums/kds";
-import type { KdsTeam, KdsTeamItem } from "../types/kds";
+import { normalizeOrderDetailStatus, OrderDetailStatus } from "../enums/kds";
+import type { KdsItemStatus, KdsTeam, KdsTeamItem } from "../types/kds";
 import KdsItemCard from "./KdsItemCard";
 
 type KdsTeamSectionProps = {
@@ -12,9 +12,9 @@ type KdsTeamSectionProps = {
 	items: KdsTeamItem[];
 	isLoadingItems: boolean;
 	hasItemsError: boolean;
-	hideCanceledItems: boolean;
+	hideFinishedItems: boolean;
 	isUpdatingStatus: boolean;
-	onAdvanceStatus: (restaurantOrderDetailId: number, nextStatusId: number) => Promise<void>;
+	onAdvanceStatus: (ticketItemCen: string, nextStatus: KdsItemStatus) => Promise<void>;
 };
 
 export default function KdsTeamSection({
@@ -22,12 +22,16 @@ export default function KdsTeamSection({
 	items,
 	isLoadingItems,
 	hasItemsError,
-	hideCanceledItems,
+	hideFinishedItems,
 	isUpdatingStatus,
 	onAdvanceStatus,
 }: KdsTeamSectionProps) {
-	const visibleItems = hideCanceledItems
-		? items.filter((item) => item.orderItemStatusId !== OrderDetailStatus.Canceled)
+	const visibleItems = hideFinishedItems
+		? items.filter(
+				(item) =>
+					normalizeOrderDetailStatus(item.status) !== OrderDetailStatus.Canceled &&
+					normalizeOrderDetailStatus(item.status) !== OrderDetailStatus.Delivered,
+			)
 		: items;
 
 	const sortedVisibleItems = useMemo(() => {
@@ -39,7 +43,7 @@ export default function KdsTeamSection({
 				return rightResendCount - leftResendCount;
 			}
 
-			return left.restaurantOrderDetailId - right.restaurantOrderDetailId;
+			return new Date(left.createdAt).getTime() - new Date(right.createdAt).getTime();
 		});
 	}, [visibleItems]);
 
@@ -49,11 +53,11 @@ export default function KdsTeamSection({
 				<div className="flex flex-wrap items-center justify-between gap-2">
 					<div>
 						<CardTitle>{team.name}</CardTitle>
-						<CardDescription>{team.categoryIds.length} categorias asociadas</CardDescription>
+						<CardDescription>{team.categoryCens.length} categorias asociadas</CardDescription>
 					</div>
 					<div className="flex flex-wrap items-center gap-2">
 						<Badge variant="outline">{items.length} items</Badge>
-						{hideCanceledItems ? <Badge variant="secondary">Ocultando cancelados</Badge> : null}
+						{hideFinishedItems ? <Badge variant="secondary">Ocultando cancelados y listos</Badge> : null}
 					</div>
 				</div>
 			</CardHeader>
@@ -83,7 +87,7 @@ export default function KdsTeamSection({
 					<div className="space-y-3">
 						{sortedVisibleItems.map((item) => (
 							<KdsItemCard
-								key={`${item.restaurantOrderDetailId}-${item.productId}`}
+								key={`${item.ticketItemCen}-${item.productCen}`}
 								item={item}
 								onAdvanceStatus={onAdvanceStatus}
 								isUpdatingStatus={isUpdatingStatus}

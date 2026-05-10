@@ -1,18 +1,28 @@
+export type KdsItemStatus = "created" | "preparing" | "delivered" | "canceled" | "cancelled" | string;
+
 export type KdsTeam = {
-	id: number;
+	teamCen: string;
 	name: string;
-	categoryIds: number[];
+	categoryCens: string[];
 };
 
 export type KdsTeamItem = {
-	productId: number;
-	categoryId: number;
-	restaurantOrderDetailId: number;
-	restaurantOrderId: number;
+	ticketItemCen: string;
+	ticketCen: string;
+	productCen: string;
 	productName: string;
 	quantity: number;
-	orderItemStatus: string;
-	orderItemStatusId: number;
+	status: KdsItemStatus;
 	note: string | null;
 	resendCount: number;
+	createdAt: string;
+};
+
+export type UpdateKdsItemStatusRequest = {
+	status: KdsItemStatus;
+};
+
+export type KdsStatusUpdateResponse = {
+	ticketItemCen: string;
+	status: KdsItemStatus;
 };

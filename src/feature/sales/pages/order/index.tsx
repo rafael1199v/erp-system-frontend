@@ -1,105 +1,100 @@
+import { CircleAlert, Plus, ReceiptText, UsersRound } from "lucide-react";
+import { useMemo, useState } from "react";
+import { useNavigate } from "react-router";
+import { toast } from "sonner";
+import { useSelectedCompanyCen } from "@/store/companyStore";
 import { Alert, AlertDescription, AlertTitle } from "@/ui/alert";
 import { Badge } from "@/ui/badge";
 import { Button } from "@/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/ui/dialog";
 import { Title } from "@/ui/typography";
-import { useSelectedCompanyId } from "@/store/companyStore";
-import { CircleAlert, Plus, ReceiptText, UsersRound } from "lucide-react";
-import { useMemo, useState } from "react";
-import { useNavigate } from "react-router";
-import { toast } from "sonner";
 import PosTicketCard from "../../components/PosTicketCard";
 import { canCancelOrder, isOrderOpen } from "../../enums/order";
 import { extractCancelOrderApiError, useCancelRestaurantOrder } from "../../hooks/use-cancel-restaurant-order";
 import { useRestaurantOrders } from "../../hooks/use-pos-tickets";
 import { useWaiters } from "../../hooks/use-waiters";
-import type { RestaurantOrder } from "../../types/order";
+import type { Ticket } from "../../types/order";
 
 export default function OrderPage() {
 	const navigate = useNavigate();
-	const selectedCompanyId = useSelectedCompanyId();
-	const companyId = Number.parseInt(selectedCompanyId ?? "", 10);
-	const hasValidCompany = Number.isInteger(companyId) && companyId > 0;
+	const selectedCompanyCen = useSelectedCompanyCen();
+	const companyCen = selectedCompanyCen ?? "";
+	const hasValidCompany = companyCen.trim() !== "";
 
-	const { orders, createRestaurantOrder, isCreatingRestaurantOrder, assignWaiter } = useRestaurantOrders(
-		hasValidCompany ? companyId : null,
+	const { tickets, createTicket, isCreatingRestaurantOrder, assignTicketWaiter } = useRestaurantOrders(
+		hasValidCompany ? companyCen : null,
 	);
-	const { cancelRestaurantOrder, isCancelingRestaurantOrder } = useCancelRestaurantOrder();
-	const waitersQuery = useWaiters(hasValidCompany ? companyId : null);
-	const [targetOrderToCancel, setTargetOrderToCancel] = useState<RestaurantOrder | null>(null);
+	const { cancelTicket, isCancelingTicket } = useCancelRestaurantOrder();
+	const waitersQuery = useWaiters(hasValidCompany ? companyCen : null);
+	const [targetTicketToCancel, setTargetTicketToCancel] = useState<Ticket | null>(null);
 
-	const openOrdersCount = useMemo(() => {
-		return orders.filter((order) => isOrderOpen(order.orderStatusId)).length;
-	}, [orders]);
+	const openTicketsCount = useMemo(() => {
+		return tickets.filter((ticket) => isOrderOpen(ticket.status)).length;
+	}, [tickets]);
 
-	const handleCreateOrder = async () => {
+	const handleCreateTicket = async () => {
 		if (!hasValidCompany) {
 			toast.error("Selecciona una compania antes de crear una cuenta.");
 			return;
 		}
 
-		await createRestaurantOrder(companyId);
+		await createTicket(companyCen);
 		toast.success("Cuenta creada correctamente.");
 	};
 
-	const handleAssignWaiter = async (restaurantOrderId: number, waiterId: number | null) => {
+	const handleAssignWaiter = async (ticketCen: string, waiterCen: string | null) => {
 		if (!hasValidCompany) {
 			return;
 		}
 
-		await assignWaiter(companyId, waiterId, restaurantOrderId);
-		const assignedWaiter = waitersQuery.data?.find((waiter) => waiter.id === waiterId);
+		await assignTicketWaiter(companyCen, waiterCen, ticketCen);
+		const assignedWaiter = waitersQuery.data?.find((waiter) => waiter.waiterCen === waiterCen);
 		toast.success(
 			assignedWaiter ? `Mesero ${assignedWaiter.name} asignado correctamente.` : "Asignacion de mesero actualizada.",
 		);
 	};
 
-	const handleContinueToCheckout = (restaurantOrder: RestaurantOrder) => {
-		if (!isOrderOpen(restaurantOrder.orderStatusId)) {
+	const handleContinueToCheckout = (ticket: Ticket) => {
+		if (!isOrderOpen(ticket.status)) {
 			toast.error("Solo se puede cobrar una cuenta abierta.");
 			return;
 		}
 
-		if (!restaurantOrder.waiterId) {
+		if (!ticket.waiterCen) {
 			toast.error("Debes asignar un mesero antes de continuar a cobro.");
 			return;
 		}
 
-		navigate(`/sales/orders/${restaurantOrder.restaurantOrderId}/checkout`, {
-			state: { restaurantOrder },
+		navigate(`/sales/tickets/${encodeURIComponent(ticket.ticketCen)}/checkout`, {
+			state: { ticket },
 		});
 	};
 
-	const handleTakeOrder = (restaurantOrder: RestaurantOrder) => {
-		if (!isOrderOpen(restaurantOrder.orderStatusId)) {
+	const handleTakeOrder = (ticket: Ticket) => {
+		if (!isOrderOpen(ticket.status)) {
 			toast.error("Solo se puede gestionar una cuenta abierta.");
 			return;
 		}
 
-		navigate(`/sales/orders/${restaurantOrder.restaurantOrderId}`, {
-			state: { restaurantOrder },
+		navigate(`/sales/tickets/${encodeURIComponent(ticket.ticketCen)}`, {
+			state: { ticket },
 		});
 	};
 
-	const handleConfirmCancelOrder = async () => {
-		if (!targetOrderToCancel) {
+	const handleConfirmCancelTicket = async () => {
+		if (!targetTicketToCancel || !hasValidCompany) {
 			return;
 		}
 
 		try {
-			await cancelRestaurantOrder({ restaurantOrderId: targetOrderToCancel.restaurantOrderId });
+			await cancelTicket({ companyCen, ticketCen: targetTicketToCancel.ticketCen });
 			toast.success("Cuenta cancelada correctamente.");
-			setTargetOrderToCancel(null);
+			setTargetTicketToCancel(null);
 		} catch (error) {
 			const backendError = extractCancelOrderApiError(error);
-			if (backendError) {
-				toast.error(backendError);
-				setTargetOrderToCancel(null);
-				return;
-			}
-
-			toast.error("No se pudo cancelar la cuenta. Intenta nuevamente.");
+			toast.error(backendError ?? "No se pudo cancelar la cuenta. Intenta nuevamente.");
+			setTargetTicketToCancel(null);
 		}
 	};
 
@@ -109,22 +104,17 @@ export default function OrderPage() {
 				<div className="space-y-2">
 					<div className="flex items-center gap-2">
 						<Badge variant="info">Punto de venta</Badge>
-						<Badge variant="outline">Ordenes abiertas</Badge>
+						<Badge variant="outline">Tickets abiertos</Badge>
 					</div>
 					<Title as="h1">Cuentas del punto de venta</Title>
 					<p className="max-w-2xl text-sm text-muted-foreground">
-						Crea cuentas abiertas, mantenlas disponibles en la sesion y asigna meseros antes de enviar el ticket a
-						cobro.
+						Crea tickets abiertos, asigna meseros y gestiona cada cuenta usando el contrato publico CEN.
 					</p>
 				</div>
 
-				<Button
-					onClick={() => void handleCreateOrder()}
-					disabled={!hasValidCompany || isCreatingRestaurantOrder}
-					className="min-w-40"
-				>
+				<Button onClick={() => void handleCreateTicket()} disabled={!hasValidCompany || isCreatingRestaurantOrder}>
 					<Plus className="size-4" />
-					{isCreatingRestaurantOrder ? "Creando..." : "Nueva Cuenta"}
+					{isCreatingRestaurantOrder ? "Creando..." : "Nueva cuenta"}
 				</Button>
 			</div>
 
@@ -132,9 +122,7 @@ export default function OrderPage() {
 				<Alert>
 					<CircleAlert className="size-4" />
 					<AlertTitle>Compania requerida</AlertTitle>
-					<AlertDescription>
-						Selecciona una compania para crear tickets y consultar el listado de meseros.
-					</AlertDescription>
+					<AlertDescription>Selecciona una compania para crear tickets y consultar meseros.</AlertDescription>
 				</Alert>
 			) : null}
 
@@ -144,18 +132,16 @@ export default function OrderPage() {
 						<CardDescription>Cuentas abiertas</CardDescription>
 						<CardTitle className="flex items-center gap-2 text-3xl">
 							<ReceiptText className="size-6 text-primary" />
-							<span>{openOrdersCount}</span>
+							<span>{openTicketsCount}</span>
 						</CardTitle>
 					</CardHeader>
 				</Card>
-
 				<Card className="gap-3">
 					<CardHeader className="gap-1">
 						<CardDescription>Tickets con mesero</CardDescription>
-						<CardTitle className="text-3xl">{orders.filter((order) => order.waiterId).length}</CardTitle>
+						<CardTitle className="text-3xl">{tickets.filter((ticket) => ticket.waiterCen).length}</CardTitle>
 					</CardHeader>
 				</Card>
-
 				<Card className="gap-3">
 					<CardHeader className="gap-1">
 						<CardDescription>Meseros disponibles</CardDescription>
@@ -170,43 +156,33 @@ export default function OrderPage() {
 			<Card className="gap-4">
 				<CardHeader className="gap-2">
 					<CardTitle>Lista de cuentas abiertas</CardTitle>
-					<CardDescription>
-						Esta es tu lista de tickets abiertos, por lo que asegurate de tener un mesero disponible para ir continuar
-						con el cobro.
-					</CardDescription>
+					<CardDescription>Selecciona una cuenta para tomar pedido o continuar a cobro.</CardDescription>
 				</CardHeader>
-
 				<CardContent>
-					{hasValidCompany && orders.length === 0 ? (
+					{hasValidCompany && tickets.length === 0 ? (
 						<div className="rounded-xl border border-dashed bg-muted/20 px-6 py-12 text-center">
 							<p className="text-sm font-medium text-text-primary">Aun no hay cuentas abiertas para esta compania.</p>
-							<p className="mt-2 text-sm text-muted-foreground">
-								Usa Nueva Cuenta para abrir el primer ticket del POS.
-							</p>
+							<p className="mt-2 text-sm text-muted-foreground">Usa Nueva cuenta para abrir el primer ticket.</p>
 						</div>
 					) : (
 						<div className="grid gap-4 xl:grid-cols-2">
-							{orders.map((restaurantOrder) => (
+							{tickets.map((ticket) => (
 								<PosTicketCard
-									key={restaurantOrder.id}
-									restaurantOrder={restaurantOrder}
+									key={ticket.ticketCen}
+									ticket={ticket}
 									waiters={waitersQuery.data ?? []}
 									isLoadingWaiters={waitersQuery.isLoading}
 									onAssignWaiter={handleAssignWaiter}
 									onTakeOrder={handleTakeOrder}
 									onContinueToCheckout={handleContinueToCheckout}
-									onCancelOrder={(order) => {
-										if (!canCancelOrder(order.orderStatusId)) {
+									onCancelOrder={(targetTicket) => {
+										if (!canCancelOrder(targetTicket.status)) {
 											toast.error("Solo se puede cancelar una cuenta abierta.");
 											return;
 										}
-
-										setTargetOrderToCancel(order);
+										setTargetTicketToCancel(targetTicket);
 									}}
-									isCancelingOrder={
-										isCancelingRestaurantOrder &&
-										targetOrderToCancel?.restaurantOrderId === restaurantOrder.restaurantOrderId
-									}
+									isCancelingOrder={isCancelingTicket && targetTicketToCancel?.ticketCen === ticket.ticketCen}
 								/>
 							))}
 						</div>
@@ -215,11 +191,9 @@ export default function OrderPage() {
 			</Card>
 
 			<Dialog
-				open={targetOrderToCancel !== null}
+				open={targetTicketToCancel !== null}
 				onOpenChange={(isOpen) => {
-					if (!isOpen) {
-						setTargetOrderToCancel(null);
-					}
+					if (!isOpen) setTargetTicketToCancel(null);
 				}}
 			>
 				<DialogContent>
@@ -228,19 +202,11 @@ export default function OrderPage() {
 						<DialogDescription>Esta accion cancelara la cuenta y todos sus items. Deseas continuar?</DialogDescription>
 					</DialogHeader>
 					<DialogFooter>
-						<Button
-							variant="outline"
-							onClick={() => setTargetOrderToCancel(null)}
-							disabled={isCancelingRestaurantOrder}
-						>
+						<Button variant="outline" onClick={() => setTargetTicketToCancel(null)} disabled={isCancelingTicket}>
 							Cerrar
 						</Button>
-						<Button
-							variant="destructive"
-							onClick={() => void handleConfirmCancelOrder()}
-							disabled={isCancelingRestaurantOrder}
-						>
-							{isCancelingRestaurantOrder ? "Cancelando..." : "Confirmar cancelacion"}
+						<Button variant="destructive" onClick={() => void handleConfirmCancelTicket()} disabled={isCancelingTicket}>
+							{isCancelingTicket ? "Cancelando..." : "Confirmar cancelacion"}
 						</Button>
 					</DialogFooter>
 				</DialogContent>

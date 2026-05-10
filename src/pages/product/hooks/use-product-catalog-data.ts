@@ -1,41 +1,30 @@
+import { useQuery } from "@tanstack/react-query";
 import categoryService from "@/api/services/categoryService";
 import productService from "@/api/services/productService";
-import { useQuery } from "@tanstack/react-query";
-import { useMemo } from "react";
-import type { ProductCatalogRow } from "../columns";
 
-export const useProductCatalogData = (companyId: string | null) => {
-	const normalizedCompanyId = companyId ?? "-1";
+export const useProductCatalogData = (companyCen: string | null) => {
+	const normalizedCompanyCen = companyCen ?? "";
 
 	const productCatalogQuery = useQuery({
-		queryKey: ["product-catalog", normalizedCompanyId],
+		queryKey: ["product-catalog", normalizedCompanyCen],
 		queryFn: async () => {
-			const response = await productService.getProductCatalog(normalizedCompanyId);
+			const response = await productService.getProductCatalog(normalizedCompanyCen);
 			return response.data;
 		},
-		enabled: normalizedCompanyId !== "-1",
+		enabled: normalizedCompanyCen.length > 0,
 	});
 
 	const categoriesQuery = useQuery({
-		queryKey: ["categories", normalizedCompanyId],
+		queryKey: ["categories", normalizedCompanyCen],
 		queryFn: async () => {
-			const response = await categoryService.getCategories(normalizedCompanyId);
+			const response = await categoryService.getCategories(normalizedCompanyCen);
 			return response.data;
 		},
-		enabled: normalizedCompanyId !== "-1",
+		enabled: normalizedCompanyCen.length > 0,
 	});
 
-	const catalogRows = useMemo<ProductCatalogRow[]>(() => {
-		const companyIdAsNumber = Number.parseInt(normalizedCompanyId, 10);
-
-		return (productCatalogQuery.data ?? []).map((product) => ({
-			...product,
-			companyId: Number.isNaN(companyIdAsNumber) ? -1 : companyIdAsNumber,
-		}));
-	}, [normalizedCompanyId, productCatalogQuery.data]);
-
 	return {
-		catalogRows,
+		catalogRows: productCatalogQuery.data ?? [],
 		categories: categoriesQuery.data ?? [],
 		isLoading: productCatalogQuery.isLoading || categoriesQuery.isLoading,
 		isError: productCatalogQuery.isError || categoriesQuery.isError,

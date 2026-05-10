@@ -1,68 +1,41 @@
-import { AlertInv } from "@/components/alert-inv";
-import { useSelectedCompanyId } from "@/store/companyStore";
+import { CircleAlert, FlameKindling, Package, PackageCheck, PackageX, ReceiptText, TriangleAlert } from "lucide-react";
+import { useSelectedCompanyCen } from "@/store/companyStore";
 import { Alert, AlertDescription, AlertTitle } from "@/ui/alert";
 import { Badge } from "@/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/ui/card";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/ui/table";
-import { Text, Title } from "@/ui/typography";
+import { Title } from "@/ui/typography";
 import { fCurrency, fNumber } from "@/utils/format-number";
-import { CircleAlert, Clock3, Package, ShoppingCart, Ticket, TriangleAlert, UtensilsCrossed } from "lucide-react";
-import { useMemo } from "react";
 import { useDashboardDailySales } from "../../hooks/use-dashboard-daily-sales";
+import { useDashboardInventorySummary } from "../../hooks/use-dashboard-inventory-summary";
 import { useDashboardKdsStatus } from "../../hooks/use-dashboard-kds-status";
 import { useDashboardLowStock } from "../../hooks/use-dashboard-low-stock";
 import { useDashboardTopProducts } from "../../hooks/use-dashboard-top-products";
 
-const getStockStateLabel = (stockState: string) => {
-	if (stockState === "OutOfStock") {
-		return "Sin stock";
-	}
-
-	if (stockState === "LowStock") {
-		return "Stock bajo";
-	}
-
-	return stockState;
-};
-
-const getStockStateVariant = (stockState: string) => {
-	if (stockState === "OutOfStock") {
-		return "destructive" as const;
-	}
-
-	if (stockState === "LowStock") {
-		return "warning" as const;
-	}
-
-	return "outline" as const;
-};
-
 export default function DashboardAnalysisPage() {
-	const selectedCompanyId = useSelectedCompanyId();
-	const companyId = Number.parseInt(selectedCompanyId ?? "", 10);
-	const hasValidCompany = Number.isInteger(companyId) && companyId > 0;
+	const companyCen = useSelectedCompanyCen();
+	const hasCompany = Boolean(companyCen?.trim());
 
-	const { dailySales, isLoadingDailySales, dailySalesErrorMessage } = useDashboardDailySales(
-		hasValidCompany ? companyId : null,
-	);
-	const { kdsStatus, isLoadingKdsStatus, kdsStatusErrorMessage } = useDashboardKdsStatus(
-		hasValidCompany ? companyId : null,
-	);
-	const { topProducts, isLoadingTopProducts, topProductsErrorMessage } = useDashboardTopProducts(
-		hasValidCompany ? companyId : null,
-	);
-	const { lowStockProducts, isLoadingLowStockProducts, lowStockErrorMessage } = useDashboardLowStock(
-		hasValidCompany ? companyId : null,
-	);
+	const { dailySales, isLoadingDailySales, isErrorDailySales, dailySalesErrorMessage } =
+		useDashboardDailySales(companyCen);
+	const { topProducts, isLoadingTopProducts, isErrorTopProducts, topProductsErrorMessage } =
+		useDashboardTopProducts(companyCen, 10);
+	const { kdsStatus, isLoadingKdsStatus, isErrorKdsStatus, kdsStatusErrorMessage } =
+		useDashboardKdsStatus(companyCen);
+	const {
+		lowStockProducts,
+		isLoadingLowStockProducts,
+		isErrorLowStockProducts,
+		lowStockErrorMessage,
+	} = useDashboardLowStock(companyCen);
+	const {
+		inventorySummary,
+		isLoadingInventorySummary,
+		isErrorInventorySummary,
+		inventorySummaryErrorMessage,
+	} = useDashboardInventorySummary(companyCen);
 
-	const hasLowStockAlerts = lowStockProducts.length > 0;
-	const hasAnyError = Boolean(
-		dailySalesErrorMessage || kdsStatusErrorMessage || topProductsErrorMessage || lowStockErrorMessage,
-	);
-
-	const errorMessage = useMemo(() => {
-		return dailySalesErrorMessage || kdsStatusErrorMessage || topProductsErrorMessage || lowStockErrorMessage;
-	}, [dailySalesErrorMessage, kdsStatusErrorMessage, topProductsErrorMessage, lowStockErrorMessage]);
+	const isLoadingSummary = isLoadingDailySales || isLoadingInventorySummary || isLoadingKdsStatus;
+	const criticalProducts = lowStockProducts.slice(0, 6);
 
 	return (
 		<div className="flex h-full w-full flex-col gap-5 pb-6">
@@ -70,16 +43,16 @@ export default function DashboardAnalysisPage() {
 				<div className="space-y-2">
 					<div className="flex items-center gap-2">
 						<Badge variant="info">Dashboard</Badge>
-						<Badge variant="outline">Analisis diario</Badge>
+						<Badge variant="outline">Ventas e inventario CEN</Badge>
 					</div>
 					<Title as="h1">Resumen operativo</Title>
 					<p className="max-w-3xl text-sm text-muted-foreground">
-						Consulta ventas del dia, estado KDS, productos mas vendidos y alertas de inventario.
+						Consulta ventas del dia, preparacion KDS, productos mas vendidos y alertas criticas de inventario.
 					</p>
 				</div>
 			</div>
 
-			{!hasValidCompany ? (
+			{!hasCompany ? (
 				<Alert>
 					<CircleAlert className="size-4" />
 					<AlertTitle>Compania requerida</AlertTitle>
@@ -87,176 +60,150 @@ export default function DashboardAnalysisPage() {
 				</Alert>
 			) : null}
 
-			{hasValidCompany && hasAnyError ? (
+			{isErrorDailySales || isErrorInventorySummary || isErrorKdsStatus ? (
 				<Alert>
 					<CircleAlert className="size-4" />
-					<AlertTitle>No se pudo completar la carga del dashboard</AlertTitle>
+					<AlertTitle>No se pudieron cargar todos los indicadores</AlertTitle>
 					<AlertDescription>
-						{errorMessage ?? "Intenta recargar la pagina para volver a consultar los datos."}
+						{dailySalesErrorMessage ?? inventorySummaryErrorMessage ?? kdsStatusErrorMessage ?? "Intenta recargar la pagina."}
 					</AlertDescription>
 				</Alert>
 			) : null}
 
-			<div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+			<div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
 				<Card className="gap-3">
 					<CardHeader className="gap-1">
-						<CardDescription>Total ventas del dia</CardDescription>
+						<CardDescription>Ventas del dia</CardDescription>
 						<CardTitle className="flex items-center gap-2 text-3xl">
-							<ShoppingCart className="size-6 text-primary" />
-							<span>{isLoadingDailySales ? "Cargando..." : fCurrency(dailySales?.totalSales ?? 0)}</span>
+							<ReceiptText className="size-6 text-primary" />
+							<span>{isLoadingSummary ? "..." : fCurrency(dailySales?.totalSales ?? 0)}</span>
 						</CardTitle>
 					</CardHeader>
 				</Card>
-
 				<Card className="gap-3">
 					<CardHeader className="gap-1">
-						<CardDescription>Tickets del dia</CardDescription>
-						<CardTitle className="flex items-center gap-2 text-3xl">
-							<Ticket className="size-6 text-primary" />
-							<span>{isLoadingDailySales ? "Cargando..." : fNumber(dailySales?.ticketsCount ?? 0)}</span>
-						</CardTitle>
+						<CardDescription>Tickets cobrados</CardDescription>
+						<CardTitle className="text-3xl">{isLoadingSummary ? "..." : fNumber(dailySales?.ticketsCount ?? 0)}</CardTitle>
 					</CardHeader>
 				</Card>
-
 				<Card className="gap-3">
 					<CardHeader className="gap-1">
 						<CardDescription>Ticket promedio</CardDescription>
+						<CardTitle className="text-3xl">{isLoadingSummary ? "..." : fCurrency(dailySales?.averageTicket ?? 0)}</CardTitle>
+					</CardHeader>
+				</Card>
+				<Card className="gap-3">
+					<CardHeader className="gap-1">
+						<CardDescription>Items en preparacion</CardDescription>
 						<CardTitle className="flex items-center gap-2 text-3xl">
-							<Clock3 className="size-6 text-primary" />
-							<span>{isLoadingDailySales ? "Cargando..." : fCurrency(dailySales?.averageTicket ?? 0)}</span>
+							<FlameKindling className="size-6 text-warning" />
+							<span>{isLoadingSummary ? "..." : fNumber(kdsStatus?.preparingCount ?? 0)}</span>
 						</CardTitle>
 					</CardHeader>
 				</Card>
 			</div>
 
-			<div className="grid gap-4 md:grid-cols-3">
+			<div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
 				<Card className="gap-3">
 					<CardHeader className="gap-1">
-						<CardDescription>KDS Pendiente</CardDescription>
-						<CardTitle className="text-3xl">
-							{isLoadingKdsStatus ? "..." : fNumber(kdsStatus?.pendingCount ?? 0)}
+						<CardDescription>Total productos</CardDescription>
+						<CardTitle className="flex items-center gap-2 text-3xl">
+							<Package className="size-6 text-primary" />
+							<span>{isLoadingInventorySummary ? "..." : fNumber(inventorySummary?.totalProducts ?? 0)}</span>
 						</CardTitle>
 					</CardHeader>
 				</Card>
-
 				<Card className="gap-3">
 					<CardHeader className="gap-1">
-						<CardDescription>KDS En preparacion</CardDescription>
-						<CardTitle className="text-3xl">
-							{isLoadingKdsStatus ? "..." : fNumber(kdsStatus?.preparingCount ?? 0)}
+						<CardDescription>Stock disponible</CardDescription>
+						<CardTitle className="flex items-center gap-2 text-3xl">
+							<PackageCheck className="size-6 text-primary" />
+							<span>{isLoadingInventorySummary ? "..." : fNumber(inventorySummary?.totalStockQuantity ?? 0)}</span>
 						</CardTitle>
 					</CardHeader>
 				</Card>
-
 				<Card className="gap-3">
 					<CardHeader className="gap-1">
-						<CardDescription>KDS Listo</CardDescription>
-						<CardTitle className="text-3xl">
-							{isLoadingKdsStatus ? "..." : fNumber(kdsStatus?.readyCount ?? 0)}
+						<CardDescription>Stock bajo</CardDescription>
+						<CardTitle className="flex items-center gap-2 text-3xl">
+							<TriangleAlert className="size-6 text-warning" />
+							<span>{isLoadingInventorySummary ? "..." : fNumber(inventorySummary?.lowStockCount ?? 0)}</span>
+						</CardTitle>
+					</CardHeader>
+				</Card>
+				<Card className="gap-3">
+					<CardHeader className="gap-1">
+						<CardDescription>Sin stock</CardDescription>
+						<CardTitle className="flex items-center gap-2 text-3xl">
+							<PackageX className="size-6 text-destructive" />
+							<span>{isLoadingInventorySummary ? "..." : fNumber(inventorySummary?.outOfStockCount ?? 0)}</span>
 						</CardTitle>
 					</CardHeader>
 				</Card>
 			</div>
 
-			<div className="grid gap-5 lg:grid-cols-[1.2fr_1fr]">
-				<Card className="gap-4">
-					<CardHeader className="gap-2">
-						<CardTitle className="flex items-center gap-2">
-							<UtensilsCrossed className="size-5 text-primary" />
-							Top productos vendidos
-						</CardTitle>
-						<CardDescription>Ranking diario generado por ventas del dia.</CardDescription>
+			<div className="grid gap-5 xl:grid-cols-[1.2fr_1fr]">
+				<Card>
+					<CardHeader>
+						<CardTitle>Productos mas vendidos</CardTitle>
+						<CardDescription>Ranking diario enriquecido con categoria y precio de venta.</CardDescription>
 					</CardHeader>
-					<CardContent>
-						{isLoadingTopProducts ? <p className="text-sm text-muted-foreground">Cargando productos...</p> : null}
+					<CardContent className="space-y-3">
+						{isErrorTopProducts ? (
+							<p className="text-sm text-warning">{topProductsErrorMessage ?? "No se pudieron cargar productos."}</p>
+						) : null}
+						{isLoadingTopProducts ? <p className="text-sm text-muted-foreground">Cargando ranking...</p> : null}
 						{!isLoadingTopProducts && topProducts.length === 0 ? (
-							<div className="rounded-xl border border-dashed bg-muted/20 px-6 py-8 text-center">
-								<p className="text-sm font-medium text-text-primary">No hay datos de productos vendidos para hoy.</p>
+							<div className="rounded-xl border border-dashed bg-muted/20 px-6 py-10 text-center">
+								<p className="text-sm font-medium text-text-primary">Aun no hay ventas registradas hoy.</p>
 							</div>
 						) : null}
-
-						{topProducts.length > 0 ? (
-							<Table>
-								<TableHeader>
-									<TableRow>
-										<TableHead>Producto</TableHead>
-										<TableHead className="text-right">Cantidad</TableHead>
-										<TableHead className="text-right">Precio</TableHead>
-									</TableRow>
-								</TableHeader>
-								<TableBody>
-									{topProducts.map((product) => (
-										<TableRow key={product.productId}>
-											<TableCell>
-												<div className="flex flex-col">
-													<Text variant="subTitle2">{product.productName}</Text>
-													<Text variant="caption" color="secondary">
-														Categoria #{product.categoryId}
-													</Text>
-												</div>
-											</TableCell>
-											<TableCell className="text-right">{fNumber(product.totalQuantity)}</TableCell>
-											<TableCell className="text-right">{fCurrency(product.sellPrice)}</TableCell>
-										</TableRow>
-									))}
-								</TableBody>
-							</Table>
-						) : null}
+						{topProducts.map((product, index) => (
+							<div key={`${product.productCen ?? product.productName}-${index}`} className="flex items-center justify-between rounded-lg border bg-muted/10 p-3">
+								<div>
+									<p className="font-medium text-text-primary">{product.productName}</p>
+									<p className="text-sm text-muted-foreground">{product.categoryName ?? "Sin categoria"}</p>
+								</div>
+								<div className="text-right">
+									<p className="font-semibold">{fNumber(product.totalQuantity)} uds.</p>
+									<p className="text-sm text-muted-foreground">{fCurrency(product.salePrice)}</p>
+								</div>
+							</div>
+						))}
 					</CardContent>
 				</Card>
 
-				<Card className="gap-4">
-					<CardHeader className="gap-2">
-						<CardTitle className="flex items-center gap-2">
-							<Package className="size-5 text-primary" />
-							Inventario critico
-						</CardTitle>
-						<CardDescription>Productos en estado sin stock o stock bajo.</CardDescription>
+				<Card>
+					<CardHeader>
+						<CardTitle>Alertas de stock</CardTitle>
+						<CardDescription>Productos con stock bajo o agotado derivados del endpoint CEN de stock.</CardDescription>
 					</CardHeader>
-					<CardContent className="space-y-4">
-						{hasLowStockAlerts ? (
-							<AlertInv
-								title="Hay productos con stock critico"
-								description="Revisa inventario para evitar quiebres durante la operacion diaria."
-							/>
+					<CardContent className="space-y-3">
+						{isErrorLowStockProducts ? (
+							<p className="text-sm text-warning">{lowStockErrorMessage ?? "No se pudo cargar stock critico."}</p>
 						) : null}
-
-						{isLoadingLowStockProducts ? (
-							<p className="text-sm text-muted-foreground">Cargando alertas de stock...</p>
-						) : null}
-
-						{!isLoadingLowStockProducts && lowStockProducts.length === 0 ? (
-							<div className="rounded-xl border border-dashed bg-muted/20 px-6 py-8 text-center">
-								<p className="text-sm font-medium text-text-primary">No existen alertas de stock para hoy.</p>
+						{isLoadingLowStockProducts ? <p className="text-sm text-muted-foreground">Cargando stock...</p> : null}
+						{!isLoadingLowStockProducts && criticalProducts.length === 0 ? (
+							<div className="rounded-xl border border-dashed bg-muted/20 px-6 py-10 text-center">
+								<p className="text-sm font-medium text-text-primary">No hay alertas criticas de stock.</p>
 							</div>
 						) : null}
-
-						{lowStockProducts.length > 0 ? (
-							<div className="space-y-3">
-								{lowStockProducts.map((item) => (
-									<div key={item.productId} className="rounded-lg border p-3">
-										<div className="flex items-start justify-between gap-2">
-											<div>
-												<p className="text-sm font-medium text-text-primary">{item.productName}</p>
-												<p className="text-xs text-muted-foreground">
-													Stock: {fNumber(item.totalStock)} / Reorden: {fNumber(item.reorderLevel)}
-												</p>
-											</div>
-											<Badge variant={getStockStateVariant(item.stockState)}>
-												{getStockStateLabel(item.stockState)}
-											</Badge>
-										</div>
+						{criticalProducts.map((product) => (
+							<div key={`${product.productCen}-${product.warehouseCen}`} className="rounded-lg border bg-muted/10 p-3">
+								<div className="flex items-start justify-between gap-3">
+									<div>
+										<p className="font-medium text-text-primary">{product.productName}</p>
+										<p className="text-sm text-muted-foreground">{product.warehouseName}</p>
 									</div>
-								))}
+									<Badge variant={product.stockState === "OUT_OF_STOCK" ? "destructive" : "warning"}>
+										{product.stockState === "OUT_OF_STOCK" ? "Sin stock" : "Stock bajo"}
+									</Badge>
+								</div>
+								<p className="mt-2 text-sm text-muted-foreground">
+									Disponible: {fNumber(product.availableQuantity)} {product.unitName}
+								</p>
 							</div>
-						) : null}
-
-						{lowStockProducts.length > 0 ? (
-							<p className="flex items-center gap-2 text-xs text-muted-foreground">
-								<TriangleAlert className="size-3.5" />
-								Prioriza reposicion para productos Sin stock antes de cierre de caja.
-							</p>
-						) : null}
+						))}
 					</CardContent>
 				</Card>
 			</div>

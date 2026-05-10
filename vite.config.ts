@@ -34,12 +34,21 @@ export default defineConfig(({ mode }) => {
 			host: true,
 			port: 3001,
 			proxy: {
-				"/api": {
-					target: "http://localhost:5240",
+				"/api/inventory": {
+					target: "http://localhost:5143",
 					changeOrigin: true,
-					//rewrite: (path) => path.replace(/^\/api/, ""),
 					secure: false,
 				},
+				"/api/sales": {
+					target: "http://localhost:5074",
+					changeOrigin: true,
+					secure: false,
+				},
+				"/api/purchases/": {
+					target: "http://localhost:5229",
+					changeOrigin: true,
+					secure: false,
+				}
 			},
 		},
 

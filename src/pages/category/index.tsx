@@ -1,201 +1,210 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { toast } from "sonner";
+import categoryService from "@/api/services/categoryService";
 import { DataTable } from "@/components/data-table";
+import { useSelectedCompanyCen } from "@/store/companyStore";
+import type { Category } from "@/types/category";
 import { Button } from "@/ui/button";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
+	Dialog,
+	DialogContent,
+	DialogDescription,
+	DialogFooter,
+	DialogHeader,
+	DialogTitle,
+	DialogTrigger,
 } from "@/ui/dialog";
 import { Input } from "@/ui/input";
 import { Label } from "@/ui/label";
 import { Title } from "@/ui/typography";
-import { getColumns, type CategoryRow } from "./columns";
-import { useSelectedCompanyId } from "@/store/companyStore";
-import type { Category } from "@/types/category";
-import categoryService from "@/api/services/categoryService";
-import { toast } from "sonner";
-
+import { type CategoryRow, getColumns } from "./columns";
 
 export default function CategoryPage() {
-  const selectedCompanyId = useSelectedCompanyId();
-  const companyId = Number.parseInt(selectedCompanyId || "1", 10);
+	const selectedCompanyCen = useSelectedCompanyCen();
 
-  const [allCategories, setAllCategories] = useState<Category[]>([]);
-  const [createOpen, setCreateOpen] = useState<boolean>(false);
-  const [editOpen, setEditOpen] = useState<boolean>(false);
-  const [editingCategory, setEditingCategory] = useState<CategoryRow | null>(null);
-  const [categoryName, setCategoryName] = useState<string>("");
-  const [editingCategoryName, setEditingCategoryName] = useState<string>("");
+	const [allCategories, setAllCategories] = useState<Category[]>([]);
+	const [createOpen, setCreateOpen] = useState<boolean>(false);
+	const [editOpen, setEditOpen] = useState<boolean>(false);
+	const [editingCategory, setEditingCategory] = useState<CategoryRow | null>(null);
+	const [categoryName, setCategoryName] = useState<string>("");
+	const [editingCategoryName, setEditingCategoryName] = useState<string>("");
 
-  const fetchCategories = useCallback(async () => {
-    const response = await categoryService.getCategories(selectedCompanyId || "-1");
-    setAllCategories(response.data);
-  }, [selectedCompanyId]);
+	const fetchCategories = useCallback(async () => {
+		if (!selectedCompanyCen) {
+			setAllCategories([]);
+			return;
+		}
 
-  useEffect(() => {
-    void fetchCategories();
-  }, [fetchCategories]);
+		const response = await categoryService.getCategories(selectedCompanyCen);
+		setAllCategories(response.data);
+	}, [selectedCompanyCen]);
 
-  const categories = useMemo(() => {
-    return allCategories.filter((category) => category.companyId === companyId);
-  }, [allCategories, companyId]);
+	useEffect(() => {
+		void fetchCategories();
+	}, [fetchCategories]);
 
-  const handleCreateCategory = async () => {
-    const normalizedName = categoryName.trim();
+	const handleCreateCategory = async () => {
+		const normalizedName = categoryName.trim();
 
-    if (!normalizedName) {
-      return;
-    }
+		if (!normalizedName) {
+			return;
+		}
 
-    if(allCategories.map<string>(c => c.name.toLowerCase()).includes(normalizedName.toLowerCase())) {
-        toast.error("Una categoria con este nombre ya existe");
-        return;
-    }
+		if (allCategories.map<string>((c) => c.name.toLowerCase()).includes(normalizedName.toLowerCase())) {
+			toast.error("Una categoria con este nombre ya existe");
+			return;
+		}
 
-    await categoryService.createCategory({ name: normalizedName, companyId: parseInt(selectedCompanyId || "-1")})
-    
-    await fetchCategories();
-    setCategoryName("");
-    setCreateOpen(false);
-  };
+		if (!selectedCompanyCen) {
+			return;
+		}
 
-  const handleEditCategory = useCallback((category: CategoryRow) => {
-    setEditingCategory(category);
-    setEditingCategoryName(category.name);
-    setEditOpen(true);
-  }, []);
+		await categoryService.createCategory(selectedCompanyCen, { name: normalizedName, description: null });
 
-  const handleUpdateCategory = async () => {
-    if (!editingCategory) {
-      return;
-    }
+		await fetchCategories();
+		setCategoryName("");
+		setCreateOpen(false);
+	};
 
-    const normalizedName = editingCategoryName.trim();
-    if (!normalizedName) {
-      return;
-    }
+	const handleEditCategory = useCallback((category: CategoryRow) => {
+		setEditingCategory(category);
+		setEditingCategoryName(category.name);
+		setEditOpen(true);
+	}, []);
 
-    const currentCategory = allCategories.find((category) => category.id === editingCategory.id);
-    const currentName = currentCategory?.name.trim().toLowerCase() ?? "";
-    if (currentName === normalizedName.toLowerCase()) {
-      setEditingCategory(null);
-      setEditingCategoryName("");
-      setEditOpen(false);
-      return;
-    }
+	const handleUpdateCategory = async () => {
+		if (!editingCategory) {
+			return;
+		}
 
-    const duplicatedName = allCategories.some(
-      (category) =>
-        category.id !== editingCategory.id &&
-        category.name.toLowerCase() === normalizedName.toLowerCase()
-    );
+		const normalizedName = editingCategoryName.trim();
+		if (!normalizedName) {
+			return;
+		}
 
-    if (duplicatedName) {
-      toast.error("Una categoria con este nombre ya existe");
-      return;
-    }
+		const currentCategory = allCategories.find((category) => category.categoryCen === editingCategory.categoryCen);
+		const currentName = currentCategory?.name.trim().toLowerCase() ?? "";
+		if (currentName === normalizedName.toLowerCase()) {
+			setEditingCategory(null);
+			setEditingCategoryName("");
+			setEditOpen(false);
+			return;
+		}
 
-    await categoryService.updateCategory({
-      id: editingCategory.id,
-      name: normalizedName,
-      companyId,
-    });
+		const duplicatedName = allCategories.some(
+			(category) =>
+				category.categoryCen !== editingCategory.categoryCen &&
+				category.name.toLowerCase() === normalizedName.toLowerCase(),
+		);
 
-    await fetchCategories();
-    setEditingCategory(null);
-    setEditingCategoryName("");
-    setEditOpen(false);
-  };
+		if (duplicatedName) {
+			toast.error("Una categoria con este nombre ya existe");
+			return;
+		}
 
-  const columns = useMemo(() => getColumns(handleEditCategory), [handleEditCategory]);
+		if (!selectedCompanyCen) {
+			return;
+		}
 
-  return (
-    <div className="flex flex-col w-full h-full gap-4">
-      <Title as="h1">Categorias</Title>
+		await categoryService.updateCategory(selectedCompanyCen, editingCategory.categoryCen, {
+			name: normalizedName,
+			description: currentCategory?.description ?? null,
+		});
 
-      <Dialog open={createOpen} onOpenChange={setCreateOpen}>
-        <DialogTrigger asChild>
-          <Button className="w-fit cursor-pointer">Crear categoria</Button>
-        </DialogTrigger>
+		await fetchCategories();
+		setEditingCategory(null);
+		setEditingCategoryName("");
+		setEditOpen(false);
+	};
 
-        <DialogContent className="sm:max-w-sm">
-          <DialogHeader>
-            <DialogTitle>Nueva categoria</DialogTitle>
-            <DialogDescription>Ingresa el nombre de la categoria para crearla.</DialogDescription>
-          </DialogHeader>
+	const columns = useMemo(() => getColumns(handleEditCategory), [handleEditCategory]);
 
-          <div className="grid gap-2">
-            <Label htmlFor="category-name">Nombre</Label>
-            <Input
-              id="category-name"
-              placeholder="Ej: Abarrotes"
-              value={categoryName}
-              onChange={(event) => setCategoryName(event.target.value)}
-              maxLength={50}
-            />
-          </div>
+	return (
+		<div className="flex flex-col w-full h-full gap-4">
+			<Title as="h1">Categorias</Title>
 
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setCreateOpen(false)}>
-              Cancelar
-            </Button>
-            <Button onClick={handleCreateCategory} disabled={!categoryName.trim()}>
-              Crear
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+			<Dialog open={createOpen} onOpenChange={setCreateOpen}>
+				<DialogTrigger asChild>
+					<Button className="w-fit cursor-pointer">Crear categoria</Button>
+				</DialogTrigger>
 
-      <Dialog
-        open={editOpen}
-        onOpenChange={(isOpen) => {
-          setEditOpen(isOpen);
-          if (!isOpen) {
-            setEditingCategory(null);
-            setEditingCategoryName("");
-          }
-        }}
-      >
-        <DialogContent className="sm:max-w-sm">
-          <DialogHeader>
-            <DialogTitle>Editar categoria</DialogTitle>
-            <DialogDescription>Actualiza el nombre de la categoria.</DialogDescription>
-          </DialogHeader>
+				<DialogContent className="sm:max-w-sm">
+					<DialogHeader>
+						<DialogTitle>Nueva categoria</DialogTitle>
+						<DialogDescription>Ingresa el nombre de la categoria para crearla.</DialogDescription>
+					</DialogHeader>
 
-          <div className="grid gap-2">
-            <Label htmlFor="edit-category-name">Nombre</Label>
-            <Input
-              id="edit-category-name"
-              placeholder="Ej: Abarrotes"
-              value={editingCategoryName}
-              onChange={(event) => setEditingCategoryName(event.target.value)}
-              maxLength={50}
-            />
-          </div>
+					<div className="grid gap-2">
+						<Label htmlFor="category-name">Nombre</Label>
+						<Input
+							id="category-name"
+							placeholder="Ej: Abarrotes"
+							value={categoryName}
+							onChange={(event) => setCategoryName(event.target.value)}
+							maxLength={50}
+						/>
+					</div>
 
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setEditOpen(false)}>
-              Cancelar
-            </Button>
-            <Button onClick={handleUpdateCategory} disabled={!editingCategoryName.trim()}>
-              Guardar
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+					<DialogFooter>
+						<Button variant="outline" onClick={() => setCreateOpen(false)}>
+							Cancelar
+						</Button>
+						<Button onClick={handleCreateCategory} disabled={!categoryName.trim()}>
+							Crear
+						</Button>
+					</DialogFooter>
+				</DialogContent>
+			</Dialog>
 
-      <div className="h-full w-11/12">
-        <DataTable columns={columns} data={categories.map<CategoryRow>(category => {
-            return {
-                id: category.id,
-                name: category.name,
-            }
-        })} />
-      </div>
-    </div>
-  );
+			<Dialog
+				open={editOpen}
+				onOpenChange={(isOpen) => {
+					setEditOpen(isOpen);
+					if (!isOpen) {
+						setEditingCategory(null);
+						setEditingCategoryName("");
+					}
+				}}
+			>
+				<DialogContent className="sm:max-w-sm">
+					<DialogHeader>
+						<DialogTitle>Editar categoria</DialogTitle>
+						<DialogDescription>Actualiza el nombre de la categoria.</DialogDescription>
+					</DialogHeader>
+
+					<div className="grid gap-2">
+						<Label htmlFor="edit-category-name">Nombre</Label>
+						<Input
+							id="edit-category-name"
+							placeholder="Ej: Abarrotes"
+							value={editingCategoryName}
+							onChange={(event) => setEditingCategoryName(event.target.value)}
+							maxLength={50}
+						/>
+					</div>
+
+					<DialogFooter>
+						<Button variant="outline" onClick={() => setEditOpen(false)}>
+							Cancelar
+						</Button>
+						<Button onClick={handleUpdateCategory} disabled={!editingCategoryName.trim()}>
+							Guardar
+						</Button>
+					</DialogFooter>
+				</DialogContent>
+			</Dialog>
+
+			<div className="h-full w-11/12">
+				<DataTable
+					columns={columns}
+					data={allCategories.map<CategoryRow>((category) => {
+						return {
+							categoryCen: category.categoryCen,
+							name: category.name,
+						};
+					})}
+				/>
+			</div>
+		</div>
+	);
 }

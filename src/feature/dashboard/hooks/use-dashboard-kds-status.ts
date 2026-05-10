@@ -1,15 +1,16 @@
 import { useQuery } from "@tanstack/react-query";
+import { normalizeCen } from "@/feature/sales/utils/cen";
 import dashboardApi from "../api/dashboardApi";
 import { extractDashboardApiError } from "./extract-dashboard-api-error";
 
-export const useDashboardKdsStatus = (companyId: number | null) => {
-	const normalizedCompanyId = companyId ?? -1;
+export const useDashboardKdsStatus = (companyCen: string | null) => {
+	const normalizedCompanyCen = normalizeCen(companyCen);
 	const query = useQuery({
-		queryKey: ["dashboard-kds-status", normalizedCompanyId] as const,
+		queryKey: ["dashboard-kds-status", normalizedCompanyCen] as const,
 		queryFn: async () => {
-			return (await dashboardApi.getKdsStatus(normalizedCompanyId)).data;
+			return (await dashboardApi.getKdsStatus(normalizedCompanyCen ?? "")).data;
 		},
-		enabled: normalizedCompanyId > 0,
+		enabled: normalizedCompanyCen !== null,
 	});
 
 	return {

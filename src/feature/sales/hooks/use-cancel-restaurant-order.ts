@@ -1,7 +1,13 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import type { AxiosError } from "axios";
 import orderApi from "../api/orderApi";
-import type { BackendStringError, CancelRestaurantOrderDto } from "../types/order";
+import type { BackendStringError, CancelTicketRequest } from "../types/order";
+import { normalizeCen } from "../utils/cen";
+
+type CancelTicketMutationPayload = CancelTicketRequest & {
+	companyCen: string;
+	ticketCen: string;
+};
 
 const getErrorPayload = (error: unknown): unknown => {
 	const axiosError = error as AxiosError;
@@ -29,24 +35,35 @@ export const useCancelRestaurantOrder = () => {
 	const queryClient = useQueryClient();
 
 	const cancelOrderMutation = useMutation({
-		mutationFn: async (payload: CancelRestaurantOrderDto) => {
-			await orderApi.cancelOrder(payload);
+		mutationFn: async (payload: CancelTicketMutationPayload) => {
+			const companyCen = normalizeCen(payload.companyCen);
+			const ticketCen = normalizeCen(payload.ticketCen);
+
+			if (!companyCen || !ticketCen) {
+				throw new Error("No se pudo identificar la compania o el ticket para cancelar.");
+			}
+
+			await orderApi.cancelTicket(companyCen, ticketCen, { reason: payload.reason });
 		},
 		onSuccess: async (_, variables) => {
-			await queryClient.invalidateQueries({ queryKey: ["sales-orders"] });
+			await queryClient.invalidateQueries({ queryKey: ["sales-tickets", variables.companyCen] });
 			await queryClient.invalidateQueries({
-				queryKey: ["sales-order-details", variables.restaurantOrderId],
+				queryKey: ["sales-ticket-items", variables.companyCen, variables.ticketCen],
 			});
 			await queryClient.invalidateQueries({
-				queryKey: ["sales-order-tax", variables.restaurantOrderId],
+				queryKey: ["sales-ticket-totals", variables.companyCen, variables.ticketCen],
 			});
 		},
 	});
 
 	return {
-		cancelRestaurantOrder: async (payload: CancelRestaurantOrderDto) => {
+		cancelRestaurantOrder: async (payload: CancelTicketMutationPayload) => {
+			await cancelOrderMutation.mutateAsync(payload);
+		},
+		cancelTicket: async (payload: CancelTicketMutationPayload) => {
 			await cancelOrderMutation.mutateAsync(payload);
 		},
 		isCancelingRestaurantOrder: cancelOrderMutation.isPending,
+		isCancelingTicket: cancelOrderMutation.isPending,
 	};
 };

@@ -1,16 +1,26 @@
 import apiClient from "@/api/apiClient";
-import type { LowStockProductDto } from "../types/dashboard";
+import type { InventoryDashboardDto, InventoryStockItemDto } from "../types/dashboard";
 
 export enum InventoryDashboardApi {
-	Dashboard = "/inventory/dashboard",
+	Inventory = "/inventory",
 }
 
-const getLowStockProducts = (companyId: number) => {
-	return apiClient.get<LowStockProductDto[]>({
-		url: `${InventoryDashboardApi.Dashboard}/${companyId}/low-stock`,
+const companyInventoryUrl = (companyCen: string) =>
+	`${InventoryDashboardApi.Inventory}/companies/${encodeURIComponent(companyCen)}`;
+
+const getInventoryDashboard = (companyCen: string) => {
+	return apiClient.get<InventoryDashboardDto>({
+		url: `${companyInventoryUrl(companyCen)}/dashboard`,
+	});
+};
+
+const getStockItems = (companyCen: string) => {
+	return apiClient.get<InventoryStockItemDto[]>({
+		url: `${companyInventoryUrl(companyCen)}/stock`,
 	});
 };
 
 export default {
-	getLowStockProducts,
+	getInventoryDashboard,
+	getStockItems,
 };

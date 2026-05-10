@@ -1,19 +1,22 @@
 import apiClient from "@/api/apiClient";
-import type { UpdateGlobalTaxRequest } from "../types/tax";
+import type { TaxConfiguration, UpdateGlobalTaxRequest } from "../types/tax";
 
 export enum SalesTaxApi {
-	Tax = "/sales/tax",
+	Sales = "/sales",
 }
 
-const getGlobalTax = (companyId: number) => {
-	return apiClient.get<number>({
-		url: `${SalesTaxApi.Tax}/${companyId}`,
+const taxConfigurationUrl = (companyCen: string) =>
+	`${SalesTaxApi.Sales}/companies/${encodeURIComponent(companyCen)}/tax-configuration`;
+
+const getGlobalTax = (companyCen: string) => {
+	return apiClient.get<TaxConfiguration>({
+		url: taxConfigurationUrl(companyCen),
 	});
 };
 
-const updateGlobalTax = (payload: UpdateGlobalTaxRequest) => {
-	return apiClient.put<void>({
-		url: SalesTaxApi.Tax,
+const updateGlobalTax = (companyCen: string, payload: UpdateGlobalTaxRequest) => {
+	return apiClient.put<TaxConfiguration>({
+		url: taxConfigurationUrl(companyCen),
 		data: payload,
 	});
 };
