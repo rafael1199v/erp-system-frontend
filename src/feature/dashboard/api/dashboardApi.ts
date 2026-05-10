@@ -16,7 +16,7 @@ const getDailySales = (companyCen: string) => {
 
 const getTopProducts = (companyCen: string, topN?: number) => {
 	const params = new URLSearchParams();
-	if (topN) params.set("topN", String(topN));
+	if (topN !== undefined) params.set("topN", String(topN));
 	const queryString = params.toString();
 
 	return apiClient.get<TopProductDto[]>({
