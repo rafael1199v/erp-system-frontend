@@ -1,6 +1,9 @@
 import type { RouteObject } from "react-router";
 import { Navigate } from "react-router";
 import DashboardAnalysisPage from "@/feature/dashboard/pages/analysis";
+import PurchaseOrderCreatePage from "@/feature/purchases/pages/order-create";
+import PurchaseOrderDetailPage from "@/feature/purchases/pages/order-detail";
+import PurchaseOrdersPage from "@/feature/purchases/pages/orders";
 import CheckoutPage from "@/feature/sales/pages/checkout";
 import KdsPage from "@/feature/sales/pages/kds";
 import OrderPage from "@/feature/sales/pages/order";
@@ -34,6 +37,15 @@ export function getFrontendDashboardRoutes(): RouteObject[] {
 				{ path: "tickets/:ticketCen/checkout", element: <CheckoutPage /> },
 				{ path: "tax", element: <TaxPage /> },
 				{ path: "kds", element: <KdsPage /> },
+			],
+		},
+		{
+			path: "purchases",
+			children: [
+				{ index: true, element: <Navigate to="orders" replace /> },
+				{ path: "orders", element: <PurchaseOrdersPage /> },
+				{ path: "orders/new", element: <PurchaseOrderCreatePage /> },
+				{ path: "orders/:orderCen", element: <PurchaseOrderDetailPage /> },
 			],
 		},
 		// {

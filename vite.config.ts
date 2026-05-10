@@ -41,7 +41,14 @@ export default defineConfig(({ mode }) => {
 				},
 				"/api/sales": {
 					target: "http://localhost:5074",
+					changeOrigin: true,
+					secure: false,
 				},
+				"/api/purchases/": {
+					target: "http://localhost:5229",
+					changeOrigin: true,
+					secure: false,
+				}
 			},
 		},
 

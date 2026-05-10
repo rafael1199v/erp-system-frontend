@@ -73,4 +73,14 @@ export const frontendNavData: NavProps["data"] = [
 			},
 		],
 	},
+	{
+		name: "Compras",
+		items: [
+			{
+				title: "Ordenes de compra",
+				path: "/purchases/orders",
+				icon: <Icon icon="local:ic-incoming" size="24" />,
+			},
+		],
+	},
 ];
