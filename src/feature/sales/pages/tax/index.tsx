@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { useSelectedCompanyCen  } from "@/store/companyStore";
+import { useSelectedCompanyCen } from "@/store/companyStore";
 import { Title } from "@/ui/typography";
 import TaxSettingsForm from "../../components/TaxSettingsForm";
 import { useTax } from "../../hooks/use-tax";
@@ -9,7 +9,7 @@ import { parseTaxPercentage } from "../../utils/saleUtils";
 
 export default function TaxPage() {
 	const selectedCompanyCen = useSelectedCompanyCen();
-	const companyCen =selectedCompanyCen ?? "";
+	const companyCen = selectedCompanyCen ?? "";
 	const hasValidCompany = companyCen.trim() !== "";
 
 	const [taxPercentageInput, setTaxPercentageInput] = useState<string>("");
