@@ -10,7 +10,7 @@ import type {
 	SupplierDto,
 } from "../types/purchase";
 
-const purchasesCompanyUrl = (companyCen: string) => `/purchases/company/${encodeURIComponent(companyCen)}`;
+const purchasesCompanyUrl = (companyCen: string) => `/purchases/companies/${encodeURIComponent(companyCen)}`;
 const purchaseOrdersUrl = (companyCen: string) => `${purchasesCompanyUrl(companyCen)}/orders`;
 const purchaseOrderUrl = (companyCen: string, orderCen: string) =>
 	`${purchaseOrdersUrl(companyCen)}/${encodeURIComponent(orderCen)}`;

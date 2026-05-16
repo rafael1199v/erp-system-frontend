@@ -1,8 +1,8 @@
 import axios, { type AxiosError, type AxiosRequestConfig, type AxiosResponse } from "axios";
 import { toast } from "sonner";
 import { GLOBAL_CONFIG } from "@/global-config";
-import { t } from "@/locales/i18n";
 import userStore from "@/store/userStore";
+import { normalizeApiError } from "./apiError";
 
 const createAxiosInstance = (baseURL: string) => {
 	const instance = axios.create({
@@ -21,23 +21,22 @@ const createAxiosInstance = (baseURL: string) => {
 
 	instance.interceptors.response.use(
 		(res: AxiosResponse) => {
-			if (res.status === 200 || res.status === 201) return res;
-			else throw new Error(t("sys.api.apiRequestFailed"));
+			if (res.status >= 200 && res.status < 300) return res;
+			throw normalizeApiError(new Error("Respuesta inesperada del servidor."));
 		},
 		(error: AxiosError) => {
-			const { response, message } = error || {};
-			const responseData = response?.data;
-			const errMsg =
-				typeof responseData === "string"
-					? responseData
-					: (responseData as { message?: string } | undefined)?.message || message || t("sys.api.errorMessage");
-			toast.error(errMsg, { position: "top-center" });
+			const apiError = normalizeApiError(error);
+			toast.error(apiError.message, { position: "top-center" });
 
-			if (response?.status === 401) {
+			if (apiError.traceId) {
+				console.error("API traceId:", apiError.traceId);
+			}
+
+			if (apiError.status === 401) {
 				userStore.getState().actions.clearUserInfoAndToken();
 			}
 
-			return Promise.reject(error);
+			return Promise.reject(apiError);
 		},
 	);
 

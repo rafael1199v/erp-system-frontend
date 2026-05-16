@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import type { AxiosError } from "axios";
+import { getApiError } from "@/api/apiError";
 import orderApi from "../api/orderApi";
 import type { BackendStringError, CancelTicketRequest } from "../types/order";
 import { normalizeCen } from "../utils/cen";
@@ -9,26 +9,8 @@ type CancelTicketMutationPayload = CancelTicketRequest & {
 	ticketCen: string;
 };
 
-const getErrorPayload = (error: unknown): unknown => {
-	const axiosError = error as AxiosError;
-	return axiosError?.response?.data;
-};
-
 export const extractCancelOrderApiError = (error: unknown): BackendStringError | null => {
-	const payload = getErrorPayload(error);
-
-	if (typeof payload === "string") {
-		return payload;
-	}
-
-	if (typeof payload === "object" && payload !== null && "message" in payload) {
-		const message = (payload as { message?: unknown }).message;
-		if (typeof message === "string") {
-			return message;
-		}
-	}
-
-	return null;
+	return getApiError(error)?.message ?? null;
 };
 
 export const useCancelRestaurantOrder = () => {

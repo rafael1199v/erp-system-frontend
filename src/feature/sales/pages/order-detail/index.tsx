@@ -124,8 +124,8 @@ export default function OrderDetailPage() {
 
 	const subtotal = ticketTotals?.subtotal ?? activeItems.reduce((sum, item) => sum + item.quantity * item.unitPrice, 0);
 	const taxAmount = ticketTotals?.taxAmount ?? 0;
-	const total = ticketTotals?.total ?? subtotal + taxAmount;
-
+	const total = ticketTotals?.total ?? subtotal + (subtotal * taxAmount) / 100;
+	
 	const getDraftQuantity = (productCen: string) => draftQuantities[productCen] ?? 1;
 
 	const setDraftQuantity = (productCen: string, nextValue: number) => {
