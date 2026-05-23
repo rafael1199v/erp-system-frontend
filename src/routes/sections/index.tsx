@@ -1,5 +1,5 @@
 import { Navigate, type RouteObject } from "react-router";
-import { authRoutes } from "./auth";
+// import { authRoutes } from "./auth";
 import { companyRoutes } from "./company";
 import { dashboardRoutes } from "./dashboard";
 import { mainRoutes } from "./main";

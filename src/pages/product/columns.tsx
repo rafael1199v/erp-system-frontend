@@ -1,71 +1,143 @@
-"use client"
+"use client";
 
-import { ProductCatalog } from "@/types/product";
-import { ColumnDef } from "@tanstack/react-table";
-import { ProductStatus } from "@/types/enum";
+import type { ColumnDef } from "@tanstack/react-table";
+import type { useNavigate } from "react-router";
+import productService from "@/api/services/productService";
+import type { ProductContractStatus } from "@/types/product";
+import { Badge } from "@/ui/badge";
 import { Button } from "@/ui/button";
-import { useNavigate } from "react-router";
 
+export interface ProductCatalogRow {
+	productCen: string;
+	sku: string;
+	name: string;
+	description: string | null;
+	categoryCen: string;
+	categoryName: string;
+	unitCen: string;
+	unitName: string;
+	salePrice: number;
+	costPrice: number | null;
+	reorderLevel: number;
+	status: ProductContractStatus;
+}
 
-export const columns: ColumnDef<ProductCatalog>[] = [
-    {
-        accessorKey: "productId",
-        header: "Codigo"
-    },
-    {
-        accessorKey: "productName",
-        header: "Nombre"
-    },
-    {
-        accessorKey: "categoryName",
-        header: "Categoria"
-    },
-    {
-        accessorKey: "unit",
-        header: "Unidad"
-    },
-    {
-        accessorKey: "statusCode",
-        header: "Estado",
+const getProductStatusBadge = (status: ProductContractStatus) => {
+	if (status === "ACTIVE") {
+		return <Badge variant="success">Disponible</Badge>;
+	}
 
-        cell: ({ row }) => {
-            const status = parseInt(row.getValue("statusCode"));
-            let formattedStatus = "Default";
+	if (status === "OUT_OF_STOCK") {
+		return <Badge variant="warning">Sin stock</Badge>;
+	}
 
-            if(status === ProductStatus.AVAILABLE) 
-                formattedStatus = "Disponible";
-            else 
-                formattedStatus = "No disponible";
-            
+	if (status === "INACTIVE") {
+		return <Badge variant="warning">No disponible</Badge>;
+	}
 
-            return <div>{formattedStatus}</div>
-        }
-    },
-    {
-        accessorKey: "totalStock",
-        header: "Total Stock"
-    },
-    { 
-        accessorKey: "reorderLevel",
-        header: "Reorder level"
-    },
-    {
-        id: "actions",
-        cell: ({ row }) => {
-            const product: ProductCatalog = row.original;
-            const navigate = useNavigate();
+	return <Badge variant="default">Desconocido</Badge>;
+};
 
-            return (
-                <Button 
-                    variant="outline" 
-                    className="cursor-pointer"
-                    onClick={() => {
-                        navigate(`/transaction-details/${product.productId}`)
-                    }}
-                >
-                    Ver historial
-                </Button>
-            );
-        }
-    }
-]
+export const columns = (
+	navigate: ReturnType<typeof useNavigate>,
+	onRefresh: () => Promise<void>,
+	companyCen: string | null,
+): ColumnDef<ProductCatalogRow>[] => [
+	{
+		accessorKey: "productCen",
+		header: "Codigo",
+	},
+	{
+		accessorKey: "sku",
+		header: "SKU",
+	},
+	{
+		accessorKey: "name",
+		header: "Nombre",
+	},
+	{
+		accessorKey: "categoryName",
+		header: "Categoria",
+	},
+	{
+		accessorKey: "unitName",
+		header: "Unidad",
+	},
+	{
+		accessorKey: "status",
+		header: "Estado Catalogo",
+
+		cell: ({ row }) => {
+			const status = row.getValue("status") as ProductContractStatus;
+			return getProductStatusBadge(status);
+		},
+	},
+	{
+		accessorKey: "salePrice",
+		header: "Precio venta",
+	},
+	{
+		accessorKey: "reorderLevel",
+		header: "Reorder level",
+	},
+	{
+		id: "actions",
+		cell: ({ row }) => {
+			const product = row.original;
+			return (
+				<Button
+					variant="outline"
+					onClick={() => navigate(`/transaction-details/${encodeURIComponent(product.productCen)}`)}
+					className="cursor-pointer"
+				>
+					Ver historial
+				</Button>
+			);
+		},
+	},
+	{
+		id: "edit-action",
+		cell: ({ row }) => {
+			const product: ProductCatalogRow = row.original;
+
+			return (
+				<Button
+					variant="outline"
+					className="cursor-pointer"
+					onClick={() => {
+						navigate(`/products/form/${encodeURIComponent(product.productCen)}`);
+					}}
+				>
+					Editar
+				</Button>
+			);
+		},
+	},
+	{
+		id: "toggle-product",
+		cell: ({ row }) => {
+			const product = row.original;
+
+			const handleToggle = async () => {
+				try {
+					if (!companyCen) return;
+
+					if (product.status === "ACTIVE") {
+						await productService.deactivateProduct(companyCen, product.productCen);
+					} else {
+						await productService.activateProduct(companyCen, product.productCen);
+					}
+					await onRefresh();
+				} catch (error) {
+					console.error("Failed to toggle product status", error);
+				}
+			};
+
+			return (
+				<Button variant="outline" onClick={handleToggle} className="w-full cursor-pointer">
+					{product.status === "ACTIVE" ? "Desactivar" : "Activar"}
+				</Button>
+			);
+		},
+	},
+];

@@ -10,6 +10,10 @@ export default defineConfig(({ mode }) => {
 	const base = env.VITE_APP_PUBLIC_PATH || "/";
 	const isProduction = mode === "production";
 
+	const inventoryApiTarget = env.INVENTORY_API_TARGET || "http://localhost:5143";
+	const salesApiTarget = env.SALES_API_TARGET || "http://localhost:5074";
+	const purchasesApiTarget = env.PURCHASES_API_TARGET || "http://localhost:5229";
+
 	return {
 		base,
 		plugins: [
@@ -34,10 +38,19 @@ export default defineConfig(({ mode }) => {
 			host: true,
 			port: 3001,
 			proxy: {
-				"/api": {
-					target: "http://localhost:5240",
+				"/api/inventory": {
+					target: inventoryApiTarget,
 					changeOrigin: true,
-					//rewrite: (path) => path.replace(/^\/api/, ""),
+					secure: false,
+				},
+				"/api/sales": {
+					target: salesApiTarget,
+					changeOrigin: true,
+					secure: false,
+				},
+				"/api/purchases/": {
+					target: purchasesApiTarget,
+					changeOrigin: true,
 					secure: false,
 				},
 			},

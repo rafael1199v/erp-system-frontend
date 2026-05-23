@@ -1,26 +1,23 @@
+import type { Company, InventoryDashboard } from "#/company";
 import apiClient from "../apiClient";
 
-import type { Company } from "#/company";
-import { ProductStock } from "@/types/productStock";
-
 export enum CompanyApi {
-  Company = "/company",
+	Inventory = "/inventory",
 }
 
 const getCompanies = () => {
-  return apiClient.get<Company[]>({
-    url: CompanyApi.Company
-  });
-}
+	return apiClient.get<Company[]>({
+		url: `${CompanyApi.Inventory}/companies`,
+	});
+};
 
-const getProductStock = (companyId: string) => {
-  return apiClient.get<ProductStock[]>({
-    url: `${CompanyApi.Company}/${companyId}/products/stock`
-  })
-}
-
+const getInventoryDashboard = (companyCen: string) => {
+	return apiClient.get<InventoryDashboard>({
+		url: `${CompanyApi.Inventory}/companies/${encodeURIComponent(companyCen)}/dashboard`,
+	});
+};
 
 export default {
-  getCompanies,
-  getProductStock
+	getCompanies,
+	getInventoryDashboard,
 };

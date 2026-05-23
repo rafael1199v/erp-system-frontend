@@ -1,17 +1,16 @@
+import type { Transaction } from "@/types/transaction";
 import apiClient from "../apiClient";
-import { TransactionDetails } from "@/types/transaction";
 
 export enum TransactionApi {
-    Transaction = "/transaction"
+	Inventory = "/inventory",
 }
 
-const getTransactionDetails = (productId: string) => {
-    return apiClient.get<TransactionDetails>({
-        url: `${TransactionApi.Transaction}/details/${productId}`
-    });
-}
+const getTransactionDetails = (companyCen: string, productCen: string) => {
+	return apiClient.get<Transaction[]>({
+		url: `${TransactionApi.Inventory}/companies/${encodeURIComponent(companyCen)}/products/${encodeURIComponent(productCen)}/kardex`,
+	});
+};
 
 export default {
-    getTransactionDetails
-}
-
+	getTransactionDetails,
+};

@@ -1,61 +1,38 @@
 "use client";
 
-import { ColumnDef } from "@tanstack/react-table";
+import type { ColumnDef } from "@tanstack/react-table";
+import type { StockItem } from "@/types/product";
 import ChangeStockDialog from "./components/change-stock-dialog";
 
-export interface ProductWithWarehouseTableRow {
-  productId: number;
-  productName: string;
-  unit: number;
-  currentCost: number;
+export type ProductWithWarehouseTableRow = StockItem;
 
-  categoryId: number;
-  categoryName: string;
-  statusCode: number;
+export const getColumns = (onStockUpdated: () => Promise<void>): ColumnDef<ProductWithWarehouseTableRow>[] => [
+	{
+		accessorKey: "productCen",
+		header: "Code",
+	},
+	{
+		accessorKey: "productName",
+		header: "Product name",
+	},
+	{
+		accessorKey: "unitName",
+		header: "Unit",
+	},
+	{
+		accessorKey: "availableQuantity",
+		header: "Stock",
+	},
+	{
+		accessorKey: "warehouseName",
+		header: "Warehouse",
+	},
+	{
+		id: "actions",
+		cell: ({ row }) => {
+			const productWithWarehouse = row.original;
 
-  warehouseId: number;
-  warehouseName: string;
-  stock: number;
-}
-
-export const getColumns = (
-  onStockUpdated: () => Promise<void>
-): ColumnDef<ProductWithWarehouseTableRow>[] => [
-  {
-    accessorKey: "productId",
-    header: "Code",
-  },
-  {
-    accessorKey: "productName",
-    header: "Product name",
-  },
-  {
-    accessorKey: "unit",
-    header: "Unit",
-  },
-  {
-    accessorKey: "categoryName",
-    header: "Category",
-  },
-  {
-    accessorKey: "warehouseName",
-    header: "Warehouse",
-  },
-  {
-    accessorKey: "stock",
-    header: "Stock",
-  },
-  {
-    id: "actions",
-    cell: ({ row }) => {
-      const productWithWarehouse = row.original;
-      
-      return ( 
-        <ChangeStockDialog 
-          productWithWarehouse={productWithWarehouse} 
-          onStockUpdated={onStockUpdated}
-        />
-      );
-    }
-  },
+			return <ChangeStockDialog productWithWarehouse={productWithWarehouse} onStockUpdated={onStockUpdated} />;
+		},
+	},
 ];
