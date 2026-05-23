@@ -13,7 +13,7 @@ import type { CreateProduct, ProductContractStatus, UpdateProduct } from "@/type
 import { Button } from "@/ui/button";
 import { Field, FieldError, FieldLabel } from "@/ui/field";
 import { Input } from "@/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/ui/select";
+//import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/ui/select";
 import { Title } from "@/ui/typography";
 
 const productSchema = z.object({
@@ -262,7 +262,7 @@ export default function ProductFormPage() {
 					<FieldError>{errors.reorderLevel?.message}</FieldError>
 				</Field>
 
-				<Field className="w-1/2">
+				{/* <Field className="w-1/2">
 					<FieldLabel htmlFor="status">Estado del producto</FieldLabel>
 					<Controller
 						name="status"
@@ -281,7 +281,7 @@ export default function ProductFormPage() {
 						)}
 					/>
 					<FieldError>{errors.status?.message}</FieldError>
-				</Field>
+				</Field> */}
 
 				<Button type="submit" className="cursor-pointer w-1/2">
 					{isEditing ? "Editar producto" : "Crear producto"}
