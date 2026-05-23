@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import type { AxiosError } from "axios";
+import { getApiError } from "@/api/apiError";
 import paymentApi from "../api/paymentApi";
 import type {
 	ProcessPaymentApiError,
@@ -22,23 +22,21 @@ const isStockFailurePayload = (value: unknown): value is ProcessTicketPaymentSto
 	return Array.isArray(candidate.insufficiencies) || Array.isArray(candidate.requirements);
 };
 
-const getErrorPayload = (error: unknown): unknown => {
-	const axiosError = error as AxiosError;
-	return axiosError?.response?.data;
-};
-
 export const extractProcessPaymentApiError = (error: unknown): ProcessPaymentApiError | null => {
-	const payload = getErrorPayload(error);
+	const apiError = getApiError(error);
 
-	if (typeof payload === "string") {
-		return payload;
+	if (!apiError) {
+		return null;
 	}
 
-	if (isStockFailurePayload(payload)) {
-		return payload;
+	const possibleStockPayloads = [apiError.raw, apiError.data, apiError.businessData];
+	const stockFailure = possibleStockPayloads.find(isStockFailurePayload);
+
+	if (stockFailure) {
+		return stockFailure;
 	}
 
-	return null;
+	return apiError.message;
 };
 
 export const useProcessPayment = () => {
