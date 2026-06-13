@@ -74,7 +74,7 @@ export default function PurchaseOrderDetailPage() {
 						<Badge variant="outline">Detalle de orden</Badge>
 						{order ? <PurchaseOrderStatusBadge status={order.status} /> : null}
 					</div>
-					<Title as="h1">Orden #{order?.orderCen.slice(0, 8) ?? orderCen.slice(0, 8)}</Title>
+					<Title as="h1">Orden #{order?.orderCen.slice(0, 9) ?? orderCen.slice(0, 9)}</Title>
 					<p className="max-w-2xl text-sm text-muted-foreground">
 						Consulta los items de compra y confirma la orden para incrementar stock en Inventory.
 					</p>
@@ -114,13 +114,13 @@ export default function PurchaseOrderDetailPage() {
 				<Card>
 					<CardHeader className="gap-1">
 						<CardDescription>Proveedor</CardDescription>
-						<CardTitle className="text-base">{supplier?.name ?? order?.supplierCen.slice(0, 8) ?? "..."}</CardTitle>
+						<CardTitle className="text-base">{supplier?.name ?? order?.supplierCen.slice(0, 9) ?? "..."}</CardTitle>
 					</CardHeader>
 				</Card>
 				<Card>
 					<CardHeader className="gap-1">
 						<CardDescription>Almacen</CardDescription>
-						<CardTitle className="text-base">{warehouse?.name ?? order?.warehouseCen.slice(0, 8) ?? "..."}</CardTitle>
+						<CardTitle className="text-base">{warehouse?.name ?? order?.warehouseCen.slice(0, 9) ?? "..."}</CardTitle>
 					</CardHeader>
 				</Card>
 				<Card>

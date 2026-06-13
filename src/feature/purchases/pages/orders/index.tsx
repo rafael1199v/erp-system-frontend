@@ -151,7 +151,7 @@ export default function PurchaseOrdersPage() {
 							<TableBody>
 								{orders.map((order) => (
 									<TableRow key={order.orderCen}>
-										<TableCell className="font-medium">{order.orderCen.slice(0, 8)}</TableCell>
+										<TableCell className="font-medium">{order.orderCen.slice(0, 9)}</TableCell>
 										<TableCell>{suppliersByCen[order.supplierCen]?.name ?? order.supplierCen.slice(0, 8)}</TableCell>
 										<TableCell>
 											<PurchaseOrderStatusBadge status={order.status} />
